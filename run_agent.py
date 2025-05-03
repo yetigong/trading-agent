@@ -15,7 +15,7 @@ def run_trading_cycle():
     
     # Initialize real providers
     print("Initializing LLM client...")
-    llm_client = get_llm_client("claude", model="financial")  # Using Claude with financial model
+    llm_client = get_llm_client("gemini", model="financial")  # Using Gemini with financial model
     
     print("Initializing market data provider...")
     market_data_provider = AlpacaMarketDataProvider()
