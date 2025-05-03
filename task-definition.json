@@ -1,0 +1,25 @@
+{
+    "family": "trading-agent-task",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "arn:aws:iam::998982002518:role/ecsTaskExecutionRole",
+    "taskRoleArn": "arn:aws:iam::998982002518:role/ecsTaskExecutionRole",
+    "containerDefinitions": [
+      {
+        "name": "trading-agent",
+        "image": "998982002518.dkr.ecr.us-west-2.amazonaws.com/trading-agent",
+        "essential": true,
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/trading-agent",
+            "awslogs-region": "us-west-2",
+            "awslogs-stream-prefix": "ecs"
+          }
+        }
+      }
+    ]
+  }
+  

@@ -61,45 +61,45 @@ def run_trading_cycle():
     print(f"Rebalancing: {json.dumps(rebalance_params, indent=2)}")
     
     try:
-        # Run a trading cycle
+    # Run a trading cycle
         print("\nRunning trading cycle...")
-        results = agent.run_trading_cycle(
-            analysis_params=analysis_params,
-            strategy_params=strategy_params,
-            rebalance_params=rebalance_params
-        )
-        
-        # Print results
-        print("\nTrading Cycle Results:")
-        print(f"Status: {results['status']}")
-        
+    results = agent.run_trading_cycle(
+        analysis_params=analysis_params,
+        strategy_params=strategy_params,
+        rebalance_params=rebalance_params
+    )
+    
+    # Print results
+    print("\nTrading Cycle Results:")
+    print(f"Status: {results['status']}")
+    
         if results['status'] == 'success':
-            print("\nSelected Analysis Strategy:")
-            print(results['analysis_strategy'])
-            
-            print("\nMarket Analysis:")
-            print(results['analysis']['analysis'])
-            
-            print("\nTrading Decisions:")
-            for decision in results['decisions']:
-                print(f"\nAction: {decision['action']}")
-                print(f"Symbol: {decision['symbol']}")
-                print(f"Quantity: {decision['quantity']}")
-                if 'reasoning' in decision:
-                    print(f"Reasoning: {decision['reasoning']}")
-                if 'risk_level' in decision:
-                    print(f"Risk Level: {decision['risk_level']}")
-            
-            if results['rebalancing']:
-                print("\nPortfolio Rebalancing:")
-                print(results['rebalancing']['rebalancing_plan'])
-            
-            print("\nExecuted Trades:")
-            for trade in results['executed_trades']:
-                print(f"\nSymbol: {trade['symbol']}")
-                print(f"Status: {trade['status']}")
-                if trade['status'] == 'failed':
-                    print(f"Error: {trade['error']}")
+    print("\nSelected Analysis Strategy:")
+    print(results['analysis_strategy'])
+    
+    print("\nMarket Analysis:")
+    print(results['analysis']['analysis'])
+    
+    print("\nTrading Decisions:")
+    for decision in results['decisions']:
+        print(f"\nAction: {decision['action']}")
+        print(f"Symbol: {decision['symbol']}")
+        print(f"Quantity: {decision['quantity']}")
+        if 'reasoning' in decision:
+            print(f"Reasoning: {decision['reasoning']}")
+        if 'risk_level' in decision:
+            print(f"Risk Level: {decision['risk_level']}")
+    
+    if results['rebalancing']:
+        print("\nPortfolio Rebalancing:")
+        print(results['rebalancing']['rebalancing_plan'])
+    
+    print("\nExecuted Trades:")
+    for trade in results['executed_trades']:
+        print(f"\nSymbol: {trade['symbol']}")
+        print(f"Status: {trade['status']}")
+        if trade['status'] == 'failed':
+            print(f"Error: {trade['error']}")
         else:
             print(f"Error: {results.get('error', 'Unknown error')}")
             

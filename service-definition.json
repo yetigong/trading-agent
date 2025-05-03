@@ -1,0 +1,19 @@
+{
+    "cluster": "trading-agent-cluster",
+    "serviceName": "trading-agent-service",
+    "taskDefinition": "trading-agent-task",
+    "desiredCount": 1,
+    "launchType": "FARGATE",
+    "platformVersion": "LATEST",
+    "networkConfiguration": {
+        "awsvpcConfiguration": {
+            "subnets": [
+                "subnet-0e7a314638e94d5bb"
+            ],
+            "securityGroups": [
+                "sg-0ea02181a196cc9f8"
+            ],
+            "assignPublicIp": "ENABLED"
+        }
+    }
+} 

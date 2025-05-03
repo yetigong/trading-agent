@@ -17,7 +17,7 @@ class AnalysisStrategySelector:
             "fundamental": FundamentalAnalysisStrategy
         }
     
-    def select_strategy(self,
+    def select_strategy(self, 
                        market_conditions: Dict[str, Any],
                        user_preferences: Dict[str, Any],
                        selection_params: Optional[Dict[str, Any]] = None) -> Type[AnalysisStrategy]:
@@ -67,7 +67,7 @@ class AnalysisStrategySelector:
             else:
                 # Default to general strategy if selection is invalid
                 return GeneralAnalysisStrategy
-                
+            
         except Exception as e:
             print(f"Error in strategy selection: {str(e)}")
             # Default to general strategy on error

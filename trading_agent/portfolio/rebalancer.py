@@ -59,12 +59,12 @@ class PortfolioRebalancer:
             
         except Exception as e:
             print(f"Error in portfolio rebalancing: {str(e)}")
-            return {
+        return {
                 "status": "failed",
                 "error": str(e)
-            }
+        }
     
-    def generate_rebalancing_orders(self,
+    def generate_rebalancing_orders(self, 
                                   rebalancing_plan: Dict[str, Any],
                                   portfolio_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
