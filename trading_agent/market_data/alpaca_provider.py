@@ -17,7 +17,11 @@ class AlpacaMarketDataProvider(MarketDataProvider):
         if not self.api_key or not self.secret_key:
             raise ValueError("Alpaca API credentials not found in environment variables")
         
-        self.client = StockHistoricalDataClient(self.api_key, self.secret_key)
+        # Initialize client with IEX data feed
+        self.client = StockHistoricalDataClient(
+            api_key=self.api_key,
+            secret_key=self.secret_key
+        )
         
         # Market indices to track
         self.indices = ['SPY', 'QQQ', 'DIA', 'IWM']  # S&P 500, Nasdaq, Dow Jones, Russell 2000
@@ -157,7 +161,8 @@ class AlpacaMarketDataProvider(MarketDataProvider):
                 symbol_or_symbols=symbol,
                 timeframe=TimeFrame.Day,
                 start=start_date,
-                end=end_date
+                end=end_date,
+                feed='iex'  # Use IEX data feed
             )
             
             bars = self.client.get_stock_bars(request_params)

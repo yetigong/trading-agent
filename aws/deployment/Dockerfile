@@ -21,5 +21,5 @@ COPY .env .env
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Run the trading agent
-CMD ["python", "run_agent.py"] 
+# Run the trading service
+CMD ["python", "trading_service.py"] 

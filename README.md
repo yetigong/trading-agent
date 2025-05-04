@@ -11,6 +11,9 @@ This project implements an AI-powered trading agent that uses Claude (Anthropic'
 - **Real-time Trading**: Integration with Alpaca for real-time trading execution
 - **Paper Trading Support**: Safe testing environment with paper trading
 - **AWS Deployment**: Automated deployment to AWS ECS Fargate
+- **Comprehensive Logging**: Detailed logging of trades, errors, and system events
+- **Robust Error Handling**: Graceful handling of API failures and market disruptions
+- **Local Development**: Support for local development using Podman
 
 ## Setup
 
@@ -28,6 +31,34 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ```
 
 3. Replace the API keys with your actual credentials.
+
+4. For local development with Podman:
+```bash
+# Build the container
+podman build -t trading-agent .
+
+# Run the container
+podman run -d --name trading-agent \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/.env:/app/.env \
+  trading-agent
+```
+
+## Project Structure
+
+```
+trading-agent/
+├── agent/                 # Core trading agent implementation
+├── aws/                   # AWS deployment configurations
+├── logs/                  # Application logs
+├── market_data/          # Market data providers
+├── tests/                # Unit and integration tests
+├── .env                  # Environment variables
+├── .gitignore           # Git ignore rules
+├── Dockerfile           # Container definition
+├── README.md            # Project documentation
+└── requirements.txt     # Python dependencies
+```
 
 ## Usage
 
@@ -143,4 +174,23 @@ This will:
 - ECS Console: Check task status and service health
 - CloudWatch Metrics: Monitor CPU, memory, and network usage
 
-For detailed deployment instructions and troubleshooting, see `aws/deployment/README.md`. 
+For detailed deployment instructions and troubleshooting, see `aws/deployment/README.md`.
+
+## Logging
+
+The trading agent implements comprehensive logging:
+
+- Trade execution logs in `logs/trading_service.log`
+- System events and errors in `logs/system.log`
+- Market data and analysis in `logs/market_data.log`
+
+Logs are automatically rotated and archived.
+
+## Error Handling
+
+The system implements robust error handling:
+
+- Automatic retries for transient API failures
+- Graceful degradation during market disruptions
+- Detailed error logging and monitoring
+- Automatic recovery from common failure scenarios 

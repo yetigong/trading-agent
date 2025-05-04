@@ -1,1 +1,3 @@
-"""Test package for trading agent.""" 
+"""
+Unit tests for the trading agent.
+""" 

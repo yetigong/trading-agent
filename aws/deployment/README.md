@@ -9,6 +9,29 @@ This directory contains the configuration files and scripts for deploying the tr
 3. AWS ECS cluster created
 4. VPC, subnets, and security groups configured
 5. ECR repository created
+6. Local development environment set up (optional)
+
+## Local Development
+
+Before deploying to AWS, you can test the application locally:
+
+1. Build the container:
+   ```bash
+   podman build -t trading-agent .
+   ```
+
+2. Run the container:
+   ```bash
+   podman run -d --name trading-agent \
+     -v $(pwd)/logs:/app/logs \
+     -v $(pwd)/.env:/app/.env \
+     trading-agent
+   ```
+
+3. Check the logs:
+   ```bash
+   podman logs -f trading-agent
+   ```
 
 ## Files
 
@@ -16,6 +39,53 @@ This directory contains the configuration files and scripts for deploying the tr
 - `service-definition.json`: Defines the ECS service configuration
 - `deploy.sh`: Deployment script that automates the build and deployment process
 - `cloudformation.yaml`: Infrastructure as Code template for AWS resources
+
+## Logging and Monitoring
+
+The application implements comprehensive logging:
+
+1. Local Development:
+   - Logs are stored in the `logs/` directory
+   - `trading_service.log`: Trade execution logs
+   - `system.log`: System events and errors
+   - `market_data.log`: Market data and analysis
+
+2. AWS Deployment:
+   - CloudWatch Logs: `/ecs/trading-agent`
+   - Log groups:
+     - `/ecs/trading-agent/trading-service`
+     - `/ecs/trading-agent/system`
+     - `/ecs/trading-agent/market-data`
+
+3. Viewing Logs:
+   ```bash
+   # Local logs
+   tail -f logs/trading_service.log
+   
+   # AWS logs
+   aws logs get-log-events \
+     --log-group-name /ecs/trading-agent/trading-service \
+     --log-stream-name latest
+   ```
+
+## Error Handling
+
+The deployment includes robust error handling:
+
+1. Container Health Checks:
+   - ECS health checks monitor container status
+   - Automatic container replacement on failure
+   - Graceful shutdown handling
+
+2. Application Error Handling:
+   - Automatic retries for transient failures
+   - Error logging and monitoring
+   - Graceful degradation during disruptions
+
+3. Monitoring Alerts:
+   - CloudWatch alarms for critical errors
+   - SNS notifications for important events
+   - Automatic scaling based on error rates
 
 ## Deployment Options
 
