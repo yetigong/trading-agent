@@ -6,7 +6,7 @@ def setup_logging():
     """Configure logging for the trading service."""
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
         handlers=[
             logging.StreamHandler(),
             logging.FileHandler('trading_service.log')
@@ -25,7 +25,7 @@ def main():
         
         # Create and start scheduler
         scheduler = TradingScheduler(interval_minutes=30)
-        logger.info("Starting trading service...")
+        logger.info("Starting trading service with enhanced logging...")
         scheduler.start(trading_cycle.execute)
         
     except Exception as e:
