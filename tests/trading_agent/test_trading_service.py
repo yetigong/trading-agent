@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from trading_agent.trading_service import TradingService
+from trading_service import TradingService
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from trading_agent.llm.client import get_llm_client
 
@@ -20,7 +20,7 @@ class TestTradingService(unittest.TestCase):
         self.assertEqual(self.trading_service.market_data_provider, self.mock_market_data)
         self.assertEqual(self.trading_service.llm_client, self.mock_llm_client)
 
-    @patch('trading_agent.trading_service.logger')
+    @patch('trading_service.logger')
     def test_execute_trade_success(self, mock_logger):
         """Test successful trade execution"""
         # Mock trade data
@@ -46,7 +46,7 @@ class TestTradingService(unittest.TestCase):
         self.assertEqual(result['symbol'], 'AAPL')
         mock_logger.info.assert_called()
 
-    @patch('trading_agent.trading_service.logger')
+    @patch('trading_service.logger')
     def test_execute_trade_failure(self, mock_logger):
         """Test trade execution failure"""
         # Mock trade data
@@ -88,7 +88,7 @@ class TestTradingService(unittest.TestCase):
         }
         self.assertFalse(self.trading_service.validate_trade_data(invalid_trade))
 
-    @patch('trading_agent.trading_service.logger')
+    @patch('trading_service.logger')
     def test_handle_trade_error(self, mock_logger):
         """Test error handling for trades"""
         error = Exception("Test error")

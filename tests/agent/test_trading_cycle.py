@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 from datetime import datetime
-from trading_agent.trading_cycle import TradingCycle
+from agent.trading_cycle import TradingCycle
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from trading_agent.llm.client import get_llm_client
 
@@ -20,7 +20,7 @@ class TestTradingCycle(unittest.TestCase):
         self.assertEqual(self.trading_cycle.market_data_provider, self.mock_market_data)
         self.assertEqual(self.trading_cycle.llm_client, self.mock_llm_client)
 
-    @patch('trading_agent.trading_cycle.logger')
+    @patch('agent.trading_cycle.logger')
     def test_run_cycle_success(self, mock_logger):
         """Test successful trading cycle execution"""
         # Mock market data
@@ -47,7 +47,7 @@ class TestTradingCycle(unittest.TestCase):
         self.assertIn('analysis', result)
         mock_logger.info.assert_called()
 
-    @patch('trading_agent.trading_cycle.logger')
+    @patch('agent.trading_cycle.logger')
     def test_run_cycle_failure(self, mock_logger):
         """Test trading cycle execution failure"""
         # Mock market data error
@@ -79,7 +79,7 @@ class TestTradingCycle(unittest.TestCase):
         }
         self.assertFalse(self.trading_cycle.validate_cycle_data(invalid_data))
 
-    @patch('trading_agent.trading_cycle.logger')
+    @patch('agent.trading_cycle.logger')
     def test_handle_cycle_error(self, mock_logger):
         """Test error handling for trading cycle"""
         error = Exception("Test error")

@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
-from trading_agent.scheduler import TradingScheduler
-from trading_agent.trading_cycle import TradingCycle
+from scheduler.scheduler import TradingScheduler
+from agent.trading_cycle import TradingCycle
 
 class TestTradingScheduler(unittest.TestCase):
     def setUp(self):
@@ -15,7 +15,7 @@ class TestTradingScheduler(unittest.TestCase):
         self.assertEqual(self.scheduler.trading_cycle, self.mock_trading_cycle)
         self.assertFalse(self.scheduler.is_running)
 
-    @patch('trading_agent.scheduler.logger')
+    @patch('scheduler.scheduler.logger')
     def test_start_scheduler_success(self, mock_logger):
         """Test successful scheduler start"""
         # Mock trading cycle result
@@ -30,7 +30,7 @@ class TestTradingScheduler(unittest.TestCase):
         self.assertTrue(self.scheduler.is_running)
         mock_logger.info.assert_called()
 
-    @patch('trading_agent.scheduler.logger')
+    @patch('scheduler.scheduler.logger')
     def test_stop_scheduler_success(self, mock_logger):
         """Test successful scheduler stop"""
         # Start scheduler
@@ -42,7 +42,7 @@ class TestTradingScheduler(unittest.TestCase):
         self.assertFalse(self.scheduler.is_running)
         mock_logger.info.assert_called()
 
-    @patch('trading_agent.scheduler.logger')
+    @patch('scheduler.scheduler.logger')
     def test_scheduler_error_handling(self, mock_logger):
         """Test scheduler error handling"""
         # Mock trading cycle error
@@ -79,7 +79,7 @@ class TestTradingScheduler(unittest.TestCase):
         }
         self.assertFalse(self.scheduler.validate_schedule(invalid_schedule))
 
-    @patch('trading_agent.scheduler.logger')
+    @patch('scheduler.scheduler.logger')
     def test_handle_scheduler_error(self, mock_logger):
         """Test error handling for scheduler"""
         error = Exception("Test error")
