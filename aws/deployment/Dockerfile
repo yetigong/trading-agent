@@ -11,15 +11,15 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Copy application code
 COPY . .
 
-# Copy the .env file
-COPY .env .env
+# Create logs directory
+RUN mkdir -p logs
 
 # Set environment variables
-ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
-# Run the trading service
+# Run the application
 CMD ["python", "trading_service.py"] 
