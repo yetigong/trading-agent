@@ -10,6 +10,7 @@ This project implements an AI-powered trading agent that uses Claude (Anthropic'
 - **Risk Management**: Configurable risk tolerance and position limits
 - **Real-time Trading**: Integration with Alpaca for real-time trading execution
 - **Paper Trading Support**: Safe testing environment with paper trading
+- **AWS Deployment**: Automated deployment to AWS ECS Fargate
 
 ## Setup
 
@@ -104,4 +105,42 @@ Never commit your `.env` file to version control. Make sure it's listed in your 
 - Python 3.7+
 - Alpaca API credentials
 - Anthropic API key
-- Required packages listed in `requirements.txt` 
+- Required packages listed in `requirements.txt`
+- For deployment: AWS CLI, Podman
+
+## AWS Deployment
+
+The trading agent can be deployed to AWS ECS Fargate using the provided deployment scripts in the `aws/deployment/` directory.
+
+### Prerequisites
+
+1. AWS CLI installed and configured
+2. Podman installed (for container builds)
+3. AWS resources set up:
+   - ECS cluster
+   - ECR repository
+   - VPC and subnets
+   - IAM roles and permissions
+
+### Deployment Steps
+
+1. Review the configuration in `aws/deployment/README.md` for detailed setup instructions.
+
+2. Deploy using the automated script:
+```bash
+./aws/deployment/deploy.sh
+```
+
+This will:
+- Build the container image
+- Push to ECR
+- Update the ECS task definition
+- Deploy to Fargate
+
+### Monitoring
+
+- CloudWatch Logs: `/ecs/trading-agent`
+- ECS Console: Check task status and service health
+- CloudWatch Metrics: Monitor CPU, memory, and network usage
+
+For detailed deployment instructions and troubleshooting, see `aws/deployment/README.md`. 

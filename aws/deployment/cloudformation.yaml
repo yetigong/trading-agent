@@ -1,0 +1,142 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for Trading Agent ECS Fargate deployment'
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where the ECS cluster will be deployed
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of subnet IDs for the ECS tasks
+
+  ContainerPort:
+    Type: Number
+    Default: 8080
+    Description: Port number for the container
+
+  TaskCpu:
+    Type: String
+    Default: 256
+    Description: CPU units for the ECS task
+
+  TaskMemory:
+    Type: String
+    Default: 512
+    Description: Memory for the ECS task
+
+  DesiredCount:
+    Type: Number
+    Default: 1
+    Description: Desired number of tasks
+
+  UseExistingCluster:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Whether to use the existing ECS cluster
+
+  UseExistingLogGroup:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Whether to use the existing CloudWatch log group
+
+Conditions:
+  CreateNewCluster: !Equals [!Ref UseExistingCluster, 'false']
+  CreateNewLogGroup: !Equals [!Ref UseExistingLogGroup, 'false']
+
+Resources:
+  # ECS Cluster
+  TradingAgentCluster:
+    Type: AWS::ECS::Cluster
+    Condition: CreateNewCluster
+    Properties:
+      ClusterName: trading-agent-cluster-new
+
+  # ECS Task Execution Role
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: trading-agent-task-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  # Security Group for ECS Tasks
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for trading agent ECS tasks
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+
+  # CloudWatch Log Group
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: CreateNewLogGroup
+    Properties:
+      LogGroupName: /ecs/trading-agent-new
+      RetentionInDays: 30
+
+  # ECS Task Definition
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: trading-agent-task
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: trading-agent
+          Image: 998982002518.dkr.ecr.us-west-2.amazonaws.com/trading-agent:latest
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !If [CreateNewLogGroup, !Ref LogGroup, /ecs/trading-agent]
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  # ECS Service
+  Service:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: trading-agent-service
+      Cluster: !If [CreateNewCluster, !Ref TradingAgentCluster, trading-agent-cluster]
+      TaskDefinition: !Ref TaskDefinition
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !Ref TaskSecurityGroup
+
+Outputs:
+  ClusterName:
+    Description: Name of the ECS cluster
+    Value: !If [CreateNewCluster, !Ref TradingAgentCluster, trading-agent-cluster]
+
+  ServiceName:
+    Description: Name of the ECS service
+    Value: !Ref Service
+
+  LogGroupName:
+    Description: Name of the CloudWatch log group
+    Value: !If [CreateNewLogGroup, !Ref LogGroup, /ecs/trading-agent] 
