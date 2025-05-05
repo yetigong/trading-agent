@@ -7,19 +7,11 @@ from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
 from .base import MarketDataProvider
-import logging
-from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import GetAssetsRequest
-from alpaca.trading.enums import AssetClass
-from dotenv import load_dotenv
 
 class AlpacaMarketDataProvider(MarketDataProvider):
     """Market data provider using Alpaca's API."""
     
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        load_dotenv()
-        
         self.api_key = os.getenv('ALPACA_API_KEY')
         self.secret_key = os.getenv('ALPACA_SECRET_KEY')
         if not self.api_key or not self.secret_key:
@@ -33,15 +25,6 @@ class AlpacaMarketDataProvider(MarketDataProvider):
         
         # Market indices to track
         self.indices = ['SPY', 'QQQ', 'DIA', 'IWM']  # S&P 500, Nasdaq, Dow Jones, Russell 2000
-        
-        # Initialize Alpaca clients
-        self.trading_client = TradingClient(
-            api_key=self.api_key,
-            secret_key=self.secret_key,
-            paper=True
-        )
-        
-        self.logger.info("AlpacaMarketDataProvider initialized")
     
     def get_market_conditions(self) -> Dict[str, Any]:
         """Get current market conditions using Alpaca data."""
@@ -216,68 +199,4 @@ class AlpacaMarketDataProvider(MarketDataProvider):
             except Exception as e:
                 print(f"Error fetching data for {index}: {str(e)}")
         
-        return indices_data
-
-    def get_market_data(self, symbols=None):
-        """
-        Get current market data for specified symbols.
-        
-        Args:
-            symbols (list): List of stock symbols to get data for. If None, returns data for all tracked symbols.
-            
-        Returns:
-            dict: Market data including symbols, prices, and timestamp
-        """
-        try:
-            if not symbols:
-                # Get all active assets
-                search_params = GetAssetsRequest(asset_class=AssetClass.US_EQUITY)
-                assets = self.trading_client.get_all_assets(search_params)
-                symbols = [asset.symbol for asset in assets if asset.tradable]
-            
-            # Get latest bars for each symbol
-            prices = {}
-            for symbol in symbols:
-                request_params = StockBarsRequest(
-                    symbol_or_symbols=symbol,
-                    timeframe=TimeFrame.Minute,
-                    limit=1
-                )
-                bars = self.client.get_stock_bars(request_params)
-                if bars and symbol in bars:
-                    prices[symbol] = bars[symbol][-1].close
-            
-            return {
-                'symbols': symbols,
-                'prices': prices,
-                'timestamp': datetime.now()
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error getting market data: {str(e)}")
-            raise
-
-    def get_historical_data(self, symbol, timeframe=TimeFrame.Day, limit=30):
-        """
-        Get historical market data for a symbol.
-        
-        Args:
-            symbol (str): Stock symbol
-            timeframe (TimeFrame): Time frame for the data
-            limit (int): Number of bars to return
-            
-        Returns:
-            list: Historical price data
-        """
-        try:
-            request_params = StockBarsRequest(
-                symbol_or_symbols=symbol,
-                timeframe=timeframe,
-                limit=limit
-            )
-            bars = self.client.get_stock_bars(request_params)
-            return bars[symbol] if bars and symbol in bars else []
-            
-        except Exception as e:
-            self.logger.error(f"Error getting historical data for {symbol}: {str(e)}")
-            raise 
+        return indices_data 
