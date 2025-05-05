@@ -1,3 +1,1 @@
-"""
-Unit tests for the trading agent.
-""" 
+"""Tests for the trading agent.""" 

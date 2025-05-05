@@ -15,6 +15,7 @@ class TradingScheduler:
         """
         self.interval_minutes = interval_minutes
         self.logger = logging.getLogger(__name__)
+        self._running = False
     
     def start(self, trading_cycle_func: Callable):
         """
@@ -32,7 +33,8 @@ class TradingScheduler:
         trading_cycle_func()
         
         # Keep the scheduler running
-        while True:
+        self._running = True
+        while self._running:
             try:
                 schedule.run_pending()
                 time.sleep(1)
@@ -41,4 +43,10 @@ class TradingScheduler:
                 break
             except Exception as e:
                 self.logger.error(f"Error in scheduler: {str(e)}")
-                time.sleep(60)  # Wait a minute before retrying 
+                time.sleep(60)  # Wait a minute before retrying
+    
+    def stop(self):
+        """Stop the scheduler."""
+        self.logger.info("Stopping trading scheduler")
+        self._running = False
+        schedule.clear()  # Clear all scheduled jobs 

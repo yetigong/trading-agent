@@ -30,7 +30,11 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-cov
         
-    - name: Run tests
+    - name: Run unittest tests
+      run: |
+        python -m unittest discover tests -v
+        
+    - name: Run pytest tests with coverage
       run: |
         pytest tests/ --cov=agent --cov-report=xml
         
