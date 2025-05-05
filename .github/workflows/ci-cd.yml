@@ -29,14 +29,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-cov
+        pip install -e .  # Install package in development mode
         
     - name: Run unittest tests
       run: |
-        python -m unittest discover tests -v
+        PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest discover tests -v
         
     - name: Run pytest tests with coverage
       run: |
-        pytest tests/ --cov=agent --cov-report=xml
+        PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests/ --cov=agent --cov-report=xml
         
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
