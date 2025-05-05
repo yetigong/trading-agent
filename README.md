@@ -193,4 +193,30 @@ The system implements robust error handling:
 - Automatic retries for transient API failures
 - Graceful degradation during market disruptions
 - Detailed error logging and monitoring
-- Automatic recovery from common failure scenarios 
+- Automatic recovery from common failure scenarios
+
+## Testing
+
+The project uses Python's unittest framework for testing. Tests are located in the `/tests` directory.
+
+### Running Tests Locally
+
+To run all tests:
+```bash
+python -m unittest discover tests -v
+```
+
+### CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration. Tests are automatically run on:
+- Every push to the main branch
+- Every pull request to the main branch
+
+### Pre-commit Hooks
+
+A pre-commit hook is configured to run tests before each commit. This helps prevent commits that break the tests.
+
+To skip the pre-commit hook in exceptional cases (not recommended), use:
+```bash
+git commit --no-verify
+``` 

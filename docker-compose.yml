@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  trading-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ALPACA_API_KEY=${ALPACA_API_KEY}
+      - ALPACA_SECRET_KEY=${ALPACA_SECRET_KEY}
+      - ALPACA_ENDPOINT=${ALPACA_ENDPOINT:-https://paper-api.alpaca.markets}
+      - TRADING_CYCLE_INTERVAL=${TRADING_CYCLE_INTERVAL:-30}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - .:/app
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"
+    restart: unless-stopped 
