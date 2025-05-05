@@ -17,6 +17,15 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Check if .env file exists
+if [ ! -f "$ROOT_DIR/.env" ]; then
+    echo -e "${RED}Error: .env file not found at $ROOT_DIR/.env${NC}"
+    exit 1
+fi
+
+# Load environment variables
+source "$ROOT_DIR/.env"
+
 echo "🚀 Starting deployment process..."
 
 # Build the image
@@ -30,15 +39,29 @@ podman tag trading-agent:latest ${ECR_REPO}:latest
 
 # Push to ECR
 echo "⬆️  Pushing to ECR..."
+aws ecr get-login-password --region us-west-2 | podman login --username AWS --password-stdin 998982002518.dkr.ecr.us-west-2.amazonaws.com
 podman push ${ECR_REPO}:latest
 
 # Create CloudWatch log group if it doesn't exist
 echo "📝 Setting up CloudWatch logs..."
 aws logs create-log-group --log-group-name ${LOG_GROUP} --region ${AWS_REGION} || true
 
+# Create temporary task definition with actual values
+echo "📋 Preparing task definition..."
+TEMP_TASK_DEF="/tmp/task-definition-$(date +%s).json"
+cat "${SCRIPT_DIR}/task-definition.json" | \
+    sed "s/{{OPENAI_API_KEY}}/${OPENAI_API_KEY}/g" | \
+    sed "s/{{GOOGLE_API_KEY}}/${GOOGLE_API_KEY}/g" | \
+    sed "s/{{ANTHROPIC_API_KEY}}/${ANTHROPIC_API_KEY}/g" | \
+    sed "s/{{ALPACA_API_KEY}}/${ALPACA_API_KEY}/g" | \
+    sed "s/{{ALPACA_SECRET_KEY}}/${ALPACA_SECRET_KEY}/g" > "${TEMP_TASK_DEF}"
+
 # Register task definition
 echo "📋 Registering task definition..."
-aws ecs register-task-definition --cli-input-json file://${SCRIPT_DIR}/task-definition.json
+aws ecs register-task-definition --cli-input-json "file://${TEMP_TASK_DEF}"
+
+# Clean up temporary file
+rm "${TEMP_TASK_DEF}"
 
 # Update service
 echo "🔄 Updating ECS service..."
