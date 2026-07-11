@@ -24,6 +24,8 @@ class AppConfig:
     alpaca_secret_key: str
     alpaca_paper: bool
     log_level: str
+    finnhub_api_key: str
+    userdata_dir: str
 
 
 def get_config() -> AppConfig:
@@ -35,6 +37,8 @@ def get_config() -> AppConfig:
         alpaca_secret_key=os.getenv("ALPACA_SECRET_KEY", ""),
         alpaca_paper=os.getenv("ALPACA_PAPER", "true").lower() in ("1", "true", "yes"),
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+        finnhub_api_key=os.getenv("FINNHUB_API_KEY", ""),
+        userdata_dir=os.getenv("USERDATA_DIR", "userdata"),
     )
 
 

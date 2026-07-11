@@ -199,4 +199,10 @@ class AlpacaMarketDataProvider(MarketDataProvider):
             except Exception as e:
                 print(f"Error fetching data for {index}: {str(e)}")
         
-        return indices_data 
+        return indices_data
+
+    def get_daily_bars(self, symbol: str, days: int = 100) -> Optional[pd.DataFrame]:
+        """Fetch daily OHLCV bars for a symbol (used by signal providers)."""
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days + 10)
+        return self._get_historical_data(symbol, start_date, end_date) 

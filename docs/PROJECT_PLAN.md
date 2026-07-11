@@ -79,7 +79,7 @@ flowchart TD
 | Phase | Status | Summary |
 |-------|--------|---------|
 | **Phase 1** — Paper-trading MVP | **Done** (merged) | E2E cycle, env config, JSON decisions, artifacts, tests |
-| **Phase 2** — Richer market context | Planned | News, real indicators, deeper market data in prompts |
+| **Phase 2** — Richer market context | **In progress** | Domain/formatters/storage layers, pluggable signals, fundamentals + earnings |
 | **Phase 3** — Backtesting | Planned | Historical replay, strategy comparison metrics |
 | **Phase 4** — Multi-agent architecture | Planned | Analyzer, strategizer, executor, logger, learner |
 | **Phase 5** — Multi-broker | Planned | `BrokerClient` abstraction beyond Alpaca |
@@ -88,6 +88,7 @@ flowchart TD
 | **Phase 8** — Sign up & authentication | Planned | Registration, sign-in, user-scoped experience |
 | **Phase 9** — Multi-customer isolation | Planned | Strict per-user data boundaries; no cross-user influence |
 | **Phase 10** — Production hardening | Planned | Secrets, risk guardrails, observability, scale |
+| **Phase 11** — Customer data source connectors | Planned | OAuth + custom feeds per customer (Polymarket, news subs, webhooks) |
 
 ---
 
@@ -118,15 +119,35 @@ These surfaced during live paper runs but are **not** blockers for Phase 1:
 
 ## Phase 2: Richer Market Context
 
-**Goal:** Ground LLM decisions in real, recent market signals. Feeds the future **Market Analyzer** agent (Phase 4).
+**Goal:** Ground LLM decisions in real, recent market signals with structured output for downstream strategy execution. Feeds the future **Market Analyzer** agent (Phase 4).
 
-| Work item | Approach |
-|-----------|----------|
-| Deeper market data in prompts | Index prices, SMA trend, volatility, sector ETFs (XLK, XLV, …) |
-| News / sentiment | `NewsDataProvider` ABC; first impl via Finnhub, Alpha Vantage, or RSS + summarization |
-| Real technical indicators | Compute RSI/MACD in Python; inject into `TechnicalAnalysisStrategy` |
-| Fundamentals (later) | Earnings, PE via Financial Modeling Prep or similar |
-| Extensible signal plugins | Each signal source as a pluggable module the analyzer can aggregate |
+### Architecture (delivered in this PR)
+
+| Layer | Path | Role |
+|-------|------|------|
+| Domain models | `trading_agent/domain/` | One file per model; typed payloads only |
+| Formatters | `trading_agent/formatters/` | Model → LLM prompt text |
+| Local storage | `userdata/` + `trading_agent/storage/` | Watchlist, preferences, signal config |
+| Signal providers | `trading_agent/signals/` | Fetch market_data, technical, news, fundamentals |
+
+### Signal sources
+
+| Source | Provider | Output |
+|--------|----------|--------|
+| Market data | Alpaca (+ sector ETFs) | Indices, macro labels, sector performance |
+| Technical | Computed (RSI, MACD, SMA) | Per-symbol indicators |
+| News / sentiment | Finnhub (optional API key) | Headlines + sentiment score |
+| Fundamentals + earnings | Finnhub | PE, ROE, **latest quarterly earnings**, upcoming calendar |
+
+### Cycle integration
+
+- `SignalAggregator` produces `MarketSignals` (structured JSON in cycle artifact)
+- `AnalysisContext` / `StrategyContext` replace loose `analysis_params` / `strategy_params` dicts
+- `market_signals` field added to cycle results; `market_conditions` kept for backward compatibility
+
+### User config (`userdata/`)
+
+Copy from `userdata.example/`: `watchlist.json`, `preferences.json`, `signal_config.json`. Secrets stay in `.env` (`FINNHUB_API_KEY`, `USERDATA_DIR`).
 
 ---
 
@@ -267,7 +288,21 @@ Depends on Phase 6 (persistence), Phase 8 (auth identity). Required before any s
 
 ---
 
-## Phase 10: Production Hardening
+## Phase 11: Customer Data Source Connectors
+
+**Goal:** Let each customer connect their own data sources (OAuth, premium news, custom feeds) instead of platform-wide env keys.
+
+**Depends on:** Phase 6 (credential storage), Phase 8 (auth), Phase 9 (per-user isolation)
+
+| Work item | Approach |
+|-----------|----------|
+| Connector registry | Extend `SignalProvider` with auth type (API key, OAuth2, webhook) |
+| OAuth flows | Polymarket, premium news APIs, etc. |
+| Custom data feeds | User-defined HTTP webhook or JSON URL; schema validation |
+| Runtime resolution | `SignalAggregator` loads user-enabled connectors from DB |
+| Source catalog UI | Phase 7 console: connect/disconnect, test fetch |
+
+---
 
 Lower priority until multi-agent + persistence + auth are proven in paper trading:
 
