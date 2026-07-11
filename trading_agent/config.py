@@ -38,14 +38,27 @@ def get_config() -> AppConfig:
     )
 
 
-def validate_config(config: AppConfig) -> None:
-    """Validate required environment variables for a live paper-trading cycle."""
+def validate_alpaca_config(config: AppConfig) -> None:
+    """Validate Alpaca credentials only (no LLM keys required)."""
     missing: List[str] = []
 
     if not config.alpaca_api_key:
         missing.append("ALPACA_API_KEY")
     if not config.alpaca_secret_key:
         missing.append("ALPACA_SECRET_KEY")
+
+    if missing:
+        raise ValueError(
+            "Missing required environment variables: "
+            + ", ".join(missing)
+            + ". Copy .env.example and fill in your Alpaca credentials."
+        )
+
+
+def validate_config(config: AppConfig) -> None:
+    """Validate required environment variables for a live paper-trading cycle."""
+    validate_alpaca_config(config)
+    missing: List[str] = []
 
     if config.llm_provider not in LLM_API_KEY_ENV:
         raise ValueError(

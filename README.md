@@ -9,6 +9,7 @@ This project implements an AI-powered trading agent that uses Claude (Anthropic'
 - **Market Analysis**: Comprehensive market analysis with multiple strategies
 - **Risk Management**: Configurable risk tolerance and position limits
 - **Real-time Trading**: Integration with Alpaca for real-time trading execution
+- **Account History**: Read-only account snapshot and equity history over time (margin-aware)
 - **Paper Trading Support**: Safe testing environment with paper trading
 - **AWS Deployment**: Automated deployment to AWS ECS Fargate
 - **Comprehensive Logging**: Detailed logging of trades, errors, and system events
@@ -57,6 +58,19 @@ This will:
 
 Expected success output includes `Status: success`, analysis strategy used, and any executed trades with order IDs.
 
+### Account history (read-only)
+
+Fetch your Alpaca account snapshot and equity history. Requires only Alpaca API keys (no LLM key):
+
+```bash
+python run_account_history.py
+
+# Past year, monthly breakdown
+python run_account_history.py --period 1A --group-by month
+```
+
+Saves `logs/account_history_<timestamp>.json` and prints equity, cash, margin debt, and monthly changes. See **[Account history guide](docs/agents/account-history.md)** for details.
+
 For the scheduled service (runs every `TRADING_CYCLE_INTERVAL` minutes, default 30):
 
 ```bash
@@ -80,8 +94,9 @@ podman run -d --name trading-agent \
 ```
 trading-agent/
 ├── trading_agent/
-│   ├── domain/             # Typed pipeline models
-│   ├── orchestrator/       # TradingAgent + TradingCycle
+│   ├── domain/             # Typed pipeline models (portfolio, account, cycle, …)
+│   ├── orchestrator/       # TradingAgent, TradingCycle, AccountHistoryMode
+│   ├── account/            # Account history fetcher, query resolver, aggregation
 │   ├── execution/          # Trade preparation + broker submit
 │   ├── analysis/           # AnalysisRunner (all 3 strategies)
 │   ├── strategies/         # Trading decision strategies
@@ -92,6 +107,7 @@ trading-agent/
 ├── docs/                   # Project plan and agent guides
 ├── tests/
 ├── run_agent.py            # MVP single-cycle entry point
+├── run_account_history.py  # Account snapshot + equity history
 └── trading_service.py      # Scheduled service entry point
 ```
 
@@ -101,6 +117,7 @@ See **[Project plan](docs/PROJECT_PLAN.md)** for the full layered architecture d
 
 - **[Project plan](docs/PROJECT_PLAN.md)** — roadmap and phase status (Phase 1 complete)
 - **[Agent guides](docs/agents/README.md)** — for AI assistants and contributors
+- **[Account history](docs/agents/account-history.md)** — read-only account snapshot and equity tracking
 - **[PR description guide](docs/agents/pr-description.md)** — how to write pull request summaries
 
 ## Usage
@@ -170,6 +187,11 @@ results = agent.run_trading_cycle(
 - Position sizing based on risk tolerance
 - Diversification management
 
+### Account History
+- Read-only Alpaca account snapshot (equity, cash, margin debt)
+- Portfolio equity history with optional monthly aggregation
+- Separate entry point: `run_account_history.py` (no LLM required)
+
 ## Security Note
 
 Never commit your `.env` file to version control. Make sure it's listed in your `.gitignore` file.
@@ -224,6 +246,8 @@ For detailed deployment instructions and troubleshooting, see `aws/deployment/RE
 The trading agent implements comprehensive logging:
 
 - Trade execution logs in `logs/trading_service.log`
+- Cycle artifacts in `logs/cycle_<timestamp>_<id>.json`
+- Account history artifacts in `logs/account_history_<timestamp>.json`
 - System events and errors in `logs/system.log`
 - Market data and analysis in `logs/market_data.log`
 

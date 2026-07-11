@@ -1,7 +1,9 @@
 import os
+from typing import Any, Optional
+
 from dotenv import load_dotenv
 from alpaca.trading.client import TradingClient
-from alpaca.trading.requests import MarketOrderRequest
+from alpaca.trading.requests import GetPortfolioHistoryRequest, MarketOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce
 
 class AlpacaTradingClient:
@@ -41,6 +43,26 @@ class AlpacaTradingClient:
     def get_assets(self):
         """Get all available assets"""
         return self.client.get_all_assets()
+
+    def get_portfolio_history(
+        self,
+        period: str = "1M",
+        timeframe: Optional[str] = None,
+        date_end: Optional[str] = None,
+        extended_hours: bool = False,
+    ) -> Any:
+        """Get portfolio equity history for the account."""
+        request_kwargs = {
+            "period": period,
+            "extended_hours": extended_hours,
+        }
+        if timeframe:
+            request_kwargs["timeframe"] = timeframe
+        if date_end:
+            request_kwargs["date_end"] = date_end
+
+        history_filter = GetPortfolioHistoryRequest(**request_kwargs)
+        return self.client.get_portfolio_history(history_filter)
 
 if __name__ == "__main__":
     # Example usage
