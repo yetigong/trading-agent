@@ -27,10 +27,19 @@
                 "ecs:DescribeTaskDefinition",
                 "ecs:DescribeTasks",
                 "ecs:ListTasks",
-                "ecs:RegisterTaskDefinition",
-                "ecs:UpdateService"
+                "ecs:RegisterTaskDefinition"
             ],
             "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "iam:PassRole",
+            "Resource": "arn:aws:iam::998982002518:role/ecsTaskExecutionRole",
+            "Condition": {
+                "StringEquals": {
+                    "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                }
+            }
         }
     ]
 } 
