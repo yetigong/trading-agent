@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "Running tests before commit..."
+if [ -x "$ROOT/scripts/run_tests.sh" ]; then
+  "$ROOT/scripts/run_tests.sh"
+else
+  PYTHON="${ROOT}/.venv/bin/python"
+  if [ ! -x "$PYTHON" ]; then
+    echo "Missing venv at $PYTHON. Run: python3 -m venv .venv && pip install -r requirements.txt" >&2
+    exit 1
+  fi
+  export PYTHONPATH="${PYTHONPATH:-}:$ROOT"
+  "$PYTHON" -m unittest discover tests -v
+fi
