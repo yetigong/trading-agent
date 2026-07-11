@@ -10,6 +10,7 @@ class MarketConditions:
     economic_cycle: str = "unknown"
     market_phase: str = "unknown"
     indices: Dict[str, Any] = field(default_factory=dict)
+    sector_etfs: Dict[str, Any] = field(default_factory=dict)
     timestamp: Optional[datetime] = None
 
     @classmethod
@@ -23,5 +24,6 @@ class MarketConditions:
             economic_cycle=data.get("economic_cycle", "unknown"),
             market_phase=data.get("market_phase", "unknown"),
             indices=data.get("indices") or {},
+            sector_etfs=data.get("sector_etfs") or {},
             timestamp=ts,
         )

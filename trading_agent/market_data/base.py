@@ -2,6 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from datetime import datetime
 
+import pandas as pd
+
+
 class MarketDataProvider(ABC):
     """Base class for market data providers."""
     
@@ -63,4 +66,14 @@ class MarketDataProvider(ABC):
         Returns:
             Dictionary of indicator names and descriptions
         """
-        pass 
+        pass
+
+    @abstractmethod
+    def get_bars(self, symbol: str, days: int = 100) -> Optional[pd.DataFrame]:
+        """
+        Get daily OHLCV bars for a symbol.
+
+        Returns:
+            DataFrame with at least a 'close' column, or None if unavailable.
+        """
+        pass

@@ -10,6 +10,7 @@ This repository includes documentation for AI coding agents working in the codeb
 | [Development guide](docs/agents/development.md) | Setup, run, test, conventions |
 | [Trading cycle](docs/agents/trading-cycle.md) | End-to-end cycle behavior and extension points |
 | [Account history](docs/agents/account-history.md) | Read-only account snapshot and equity history mode |
+| [Market signals](docs/agents/market-signals.md) | Phase 2 signal providers, env keys, extension guide |
 | [PR descriptions](docs/agents/pr-description.md) | How to write pull request summaries |
 | [Project plan](docs/PROJECT_PLAN.md) | Roadmap and phase status |
 

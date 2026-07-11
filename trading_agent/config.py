@@ -85,3 +85,13 @@ def config_summary(config: AppConfig) -> Dict[str, object]:
         "alpaca_paper": config.alpaca_paper,
         "trading_cycle_interval": config.trading_cycle_interval,
     }
+
+
+def validate_finnhub_config() -> bool:
+    """Return True if FINNHUB_API_KEY is set (optional for trading cycle)."""
+    return bool(os.getenv("FINNHUB_API_KEY"))
+
+
+def validate_fmp_config() -> bool:
+    """Return True if FMP_API_KEY is set (optional for trading cycle)."""
+    return bool(os.getenv("FMP_API_KEY"))

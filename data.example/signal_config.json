@@ -1,0 +1,4 @@
+{
+  "sector_etfs": ["XLK", "XLV", "XLF", "XLE", "XLI", "XLY", "XLP", "XLU", "XLB", "XLRE"],
+  "enabled_sources": ["market_data", "technical", "news", "fundamentals"]
+}

@@ -100,7 +100,8 @@ trading-agent/
 │   ├── execution/          # Trade preparation + broker submit
 │   ├── analysis/           # AnalysisRunner (all 3 strategies)
 │   ├── strategies/         # Trading decision strategies
-│   ├── market_data/        # Alpaca + Finnhub providers
+│   ├── market_data/        # Alpaca, Finnhub, FMP providers
+│   ├── signals/            # SignalAggregator, RSI/MACD indicators
 │   └── formatters/         # Domain → LLM prompts
 ├── scheduler/              # Periodic cycle scheduler
 ├── aws/deployment/         # Docker + ECS deployment

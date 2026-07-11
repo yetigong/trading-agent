@@ -10,6 +10,14 @@ from trading_agent.llm.client import get_llm_client
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from trading_agent.models import trade_result_detail
 from trading_agent.orchestrator.agent import TradingAgent
+from trading_agent.storage import (
+    AnalysisConfigStore,
+    PreferencesStore,
+    RebalanceConfigStore,
+    SignalConfigStore,
+    StrategyConfigStore,
+    WatchlistStore,
+)
 
 
 class TradingCycle:
@@ -20,23 +28,19 @@ class TradingCycle:
         load_dotenv()
         self.config = get_config()
 
-        self.analysis_params = {
-            "time_horizon": "medium-term",
-            "focus_areas": "tech, healthcare",
-            "regions": "US",
-        }
+        self.preferences_store = PreferencesStore()
+        self.analysis_config_store = AnalysisConfigStore()
+        self.strategy_config_store = StrategyConfigStore()
+        self.rebalance_config_store = RebalanceConfigStore()
+        self.signal_config_store = SignalConfigStore()
+        self.watchlist_store = WatchlistStore()
 
-        self.strategy_params = {
-            "timeframe": "immediate",
-            "risk_management": "standard",
-            "position_sizing": "dynamic",
-        }
-
-        self.rebalance_params = {
-            "target_allocation": "balanced",
-            "threshold": 5,
-            "sector_weights": "market_cap",
-        }
+        self.user_preferences = self.preferences_store.load_preferences()
+        self.analysis_params = self.analysis_config_store.load()
+        self.strategy_params = self.strategy_config_store.load()
+        self.rebalance_params = self.rebalance_config_store.load()
+        self.signal_config = self.signal_config_store.load_config()
+        self.watchlist = self.watchlist_store.load_watchlist()
 
     def initialize_components(self):
         self.logger.info("Initializing components...")
@@ -49,16 +53,18 @@ class TradingCycle:
         )
 
         self.logger.info("Initializing market data provider...")
-        self.market_data_provider = AlpacaMarketDataProvider()
+        self.market_data_provider = AlpacaMarketDataProvider(
+            sector_etfs=self.signal_config.sector_etfs,
+        )
 
         self.logger.info("Initializing Alpaca client...")
         self.alpaca_client = AlpacaTradingClient()
 
         self.logger.info("Creating trading agent...")
         self.agent = TradingAgent(
-            risk_tolerance="moderate",
-            investment_goal="growth",
-            max_position_size=0.1,
+            risk_tolerance=self.user_preferences.risk_tolerance,
+            investment_goal=self.user_preferences.investment_goal,
+            max_position_size=self.user_preferences.max_position_size,
             llm_client=self.llm_client,
             market_data_provider=self.market_data_provider,
             alpaca_client=self.alpaca_client,
@@ -73,6 +79,9 @@ class TradingCycle:
         try:
             self.initialize_components()
 
+            self.logger.info("User preferences: %s", json.dumps(self.user_preferences.to_dict(), indent=2))
+            self.logger.info("Signal config: %s", json.dumps(self.signal_config.to_dict(), indent=2))
+            self.logger.info("Watchlist: %s", json.dumps(self.watchlist.to_dict(), indent=2))
             self.logger.info("Analysis parameters: %s", json.dumps(self.analysis_params, indent=2))
             self.logger.info("Strategy parameters: %s", json.dumps(self.strategy_params, indent=2))
             self.logger.info("Rebalancing parameters: %s", json.dumps(self.rebalance_params, indent=2))

@@ -7,10 +7,32 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+cp -r data.example data
 # Edit .env with Alpaca paper keys and GOOGLE_API_KEY (or other LLM key)
+# Edit data/*.json for preferences, strategy params, sectors, watchlist
+# Optional for richer market signals (Phase 2): FINNHUB_API_KEY, FMP_API_KEY
 ```
 
 Always use the venv: `.venv/bin/python …`
+
+## Local data files
+
+Runtime configuration lives in `data/` (gitignored). Templates are committed under `data.example/`:
+
+| File | Purpose |
+|------|---------|
+| `preferences.json` | Risk tolerance, investment goal, max position size |
+| `analysis_params.json` | Analysis time horizon, focus areas, regions |
+| `strategy_params.json` | Trading timeframe, risk management, position sizing |
+| `rebalance_params.json` | Target allocation, rebalance threshold |
+| `signal_config.json` | Sector ETFs to track, enabled signal sources |
+| `watchlist.json` | Symbols of interest (stored for future use) |
+
+On first load each store seeds from `data.example/` if the file is missing. Override the directory with `DATA_DIR` (useful in tests).
+
+FMP API responses are cached under `data/cache/fmp/YYYY-MM-DD/` (calendar-day TTL). See [market-signals.md](market-signals.md).
+
+Do not commit `data/` — only edit locally. API keys and LLM provider settings stay in `.env`.
 
 ## Run locally
 
@@ -77,11 +99,13 @@ When changing the trading pipeline (new layer, moved module, new data provider):
 
 When changing account history mode, update [`account-history.md`](account-history.md) and the account sections in [`codebase.md`](codebase.md).
 
+When changing market signal providers or indicators, update [`market-signals.md`](market-signals.md).
+
 ## Git / PR workflow
 
 - Branch from `main`; keep PRs focused
 - Follow [pr-description.md](pr-description.md) for PR body format
-- Do not commit `.env`, credentials, or `logs/` cycle artifacts
+- Do not commit `.env`, credentials, `data/`, or `logs/` cycle artifacts
 - Run tests before pushing — `.venv/bin/bash scripts/run_tests.sh`
 
 ## Docker
