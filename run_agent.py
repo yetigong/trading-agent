@@ -39,6 +39,13 @@ def print_cycle_summary(results: dict) -> None:
     print(f"Decisions: {len(results.get('decisions', []))}")
     print(f"Executed Trades: {len(results.get('executed_trades', []))}")
 
+    signals = results.get("market_signals") or {}
+    sources = signals.get("sources") or []
+    if sources:
+        print("Market Signals:")
+        for src in sources:
+            print(f"  - {src.get('source_id')}: {src.get('status')}")
+
     trades = results.get("executed_trades", [])
     if trades:
         print(f"\n  {'Action':<6} {'Qty':>5}  {'Symbol':<6} {'Status':<9} Details")

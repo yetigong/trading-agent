@@ -40,4 +40,7 @@ env/
 logs/
 *.log
 *.log.*
-*.log-* 
+*.log-*
+
+# Local user data (Phase 2)
+userdata/ 

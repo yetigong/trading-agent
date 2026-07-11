@@ -1,5 +1,6 @@
-from typing import Dict, Any
-from datetime import datetime
+from typing import Dict, Any, Optional
+from datetime import datetime, timedelta
+import pandas as pd
 from .base import MarketDataProvider
 
 class MockMarketDataProvider(MarketDataProvider):
@@ -72,4 +73,12 @@ class MockMarketDataProvider(MarketDataProvider):
             "market_phase": "Market phase (normal, bubble, crash, recovery)",
             "indices": "Major market indices (SPY, QQQ, DIA, IWM)",
             "sector_performance": "Performance by sector"
-        } 
+        }
+
+    def get_daily_bars(self, symbol: str, days: int = 100) -> Optional[pd.DataFrame]:
+        """Synthetic daily bars for testing technical indicators."""
+        end = datetime.now()
+        dates = pd.date_range(end=end, periods=days, freq="B")
+        base = 180.0 if symbol != "SPY" else 450.0
+        closes = [base + i * 0.5 for i in range(len(dates))]
+        return pd.DataFrame({"close": closes, "volume": [1_000_000] * len(dates)}, index=dates) 

@@ -1,4 +1,6 @@
+import tempfile
 import unittest
+from pathlib import Path
 
 from mock_alpaca_client import MockAlpacaTradingClient
 from trader import TradingAgent
@@ -7,12 +9,18 @@ from trading_agent.market_data.mock_provider import MockMarketDataProvider
 
 
 class TestTradingCycleIntegration(unittest.TestCase):
-    def test_full_cycle_with_mocks(self):
-        agent = TradingAgent(
-            llm_client=MockLLMClient(),
+    def _make_agent(self, llm_client=None):
+        tmp = tempfile.mkdtemp()
+        return TradingAgent(
+            llm_client=llm_client or MockLLMClient(),
             market_data_provider=MockMarketDataProvider(),
             alpaca_client=MockAlpacaTradingClient(),
+            userdata_dir=Path(tmp),
+            use_mock_signals=True,
         )
+
+    def test_full_cycle_with_mocks(self):
+        agent = self._make_agent()
 
         results = agent.run_trading_cycle(
             analysis_params={"time_horizon": "medium-term"},
@@ -23,6 +31,7 @@ class TestTradingCycleIntegration(unittest.TestCase):
         self.assertEqual(results["status"], "success")
         self.assertIn("cycle_id", results)
         self.assertIn("market_conditions", results)
+        self.assertIn("market_signals", results)
         self.assertIsNotNone(results["analysis"])
         self.assertEqual(len(results["executed_trades"]), 1)
         self.assertEqual(results["executed_trades"][0]["status"], "executed")
@@ -44,11 +53,7 @@ class TestTradingCycleIntegration(unittest.TestCase):
 
         llm.generate_response = custom_generate
 
-        agent = TradingAgent(
-            llm_client=llm,
-            market_data_provider=MockMarketDataProvider(),
-            alpaca_client=MockAlpacaTradingClient(),
-        )
+        agent = self._make_agent(llm_client=llm)
 
         results = agent.run_trading_cycle()
         self.assertEqual(results["status"], "success")

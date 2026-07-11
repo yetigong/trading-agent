@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "symbols": ["AAPL", "MSFT"],
+  "include_portfolio_positions": true,
+  "include_sector_peers": true,
+  "sector_peer_limit": 2,
+  "max_symbols": 15
+}

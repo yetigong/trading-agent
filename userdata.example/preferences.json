@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "risk_tolerance": "moderate",
+  "investment_goal": "growth",
+  "investment_horizon": "medium-term",
+  "max_position_size": 0.1
+}

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from trader import TradingAgent
 from trading_agent.config import config_summary, get_config
 from trading_agent.llm.client import get_llm_client
@@ -59,6 +61,7 @@ class TradingCycle:
             llm_client=self.llm_client,
             market_data_provider=self.market_data_provider,
             alpaca_client=self.alpaca_client,
+            userdata_dir=Path(self.config.userdata_dir),
         )
 
     def execute(self):
