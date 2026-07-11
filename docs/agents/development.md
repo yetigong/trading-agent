@@ -34,13 +34,21 @@ Always use the venv: `.venv/bin/python …`
 
 ## Tests
 
+Run the full suite (unit, mock integration, and live integration when keys are present):
+
+```bash
+.venv/bin/bash scripts/run_tests.sh
+```
+
+Or directly:
+
 ```bash
 .venv/bin/python -m unittest discover tests -v
 ```
 
-Integration tests use `LLM_PROVIDER=mock` and injected mocks — no live API keys required.
-
-Root-level `test_*.py` files are manual smoke scripts, not part of CI discovery.
+- **`tests/`** — unit tests and mock-based integration (`LLM_PROVIDER=mock`, injected mocks); no live API keys required
+- **`tests/integration/`** — live Alpaca/LLM connectivity checks; auto-skipped in CI without secrets
+- **Do not add root-level `test_*.py`** — move live checks to `tests/integration/` or one-off scripts to `scripts/`
 
 ## Coding conventions
 
@@ -56,7 +64,7 @@ Root-level `test_*.py` files are manual smoke scripts, not part of CI discovery.
 - Branch from `main`; keep PRs focused
 - Follow [pr-description.md](pr-description.md) for PR body format
 - Do not commit `.env`, credentials, or `logs/` cycle artifacts with secrets
-- Run tests before pushing
+- Run tests before pushing — `.venv/bin/bash scripts/run_tests.sh`
 
 ## Docker
 

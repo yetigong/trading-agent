@@ -81,7 +81,8 @@ Checklist of what you ran or what reviewers should run. Be specific:
 ```markdown
 ## Test plan
 
-- [x] `.venv/bin/python -m unittest discover tests -v`
+- [x] `.venv/bin/bash scripts/run_tests.sh`
+- [x] (if touching LLM/Alpaca) confirm `tests/integration/` tests ran, not skipped
 - [x] `.venv/bin/python scripts/verify_gemini_setup.py`
 - [x] `.venv/bin/python run_agent.py` — cycle completes with `Status: success`
 ```

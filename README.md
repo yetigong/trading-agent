@@ -84,7 +84,8 @@ trading-agent/
 ├── scheduler/             # Periodic cycle scheduler
 ├── aws/deployment/        # Docker + ECS deployment
 ├── docs/                  # Project plan and agent guides
-├── tests/                 # Unit and integration tests
+├── tests/                 # Unit, mock integration, and live integration tests
+│   └── integration/       # Live API checks (skip when keys absent)
 ├── run_agent.py           # MVP single-cycle entry point
 ├── trading_service.py     # Scheduled service entry point
 ├── .env.example           # Environment variable template
@@ -234,13 +235,26 @@ The system implements robust error handling:
 
 ## Testing
 
-The project uses Python's unittest framework for testing. Tests are located in the `/tests` directory.
+The project uses Python's unittest framework for testing. Tests are located in the `tests/` directory; live API checks live in `tests/integration/`.
 
 ### Running Tests Locally
 
-To run all tests:
+To run all tests (live integration tests skip automatically without API keys):
+
+```bash
+.venv/bin/bash scripts/run_tests.sh
+```
+
+Or:
+
 ```bash
 python -m unittest discover tests -v
+```
+
+To run only live integration tests (requires `.env` keys):
+
+```bash
+python -m unittest discover tests/integration -v
 ```
 
 ### CI/CD Pipeline
@@ -249,11 +263,23 @@ The project uses GitHub Actions for continuous integration. Tests are automatica
 - Every push to the main branch
 - Every pull request to the main branch
 
-### Pre-commit Hooks
+Live integration tests are discovered but skipped in CI when API keys are not configured.
 
-A pre-commit hook is configured to run tests before each commit. This helps prevent commits that break the tests.
+### Before opening a PR
 
-To skip the pre-commit hook in exceptional cases (not recommended), use:
+Run the full test suite locally before pushing:
+
 ```bash
-git commit --no-verify
+.venv/bin/bash scripts/run_tests.sh
+```
+
+If your change touches Alpaca or LLM providers, confirm the integration tests in `tests/integration/` executed (not skipped).
+
+### Optional pre-commit hook
+
+Install the tracked hook to run tests before each commit:
+
+```bash
+cp scripts/git-hooks/pre-commit .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
 ``` 
