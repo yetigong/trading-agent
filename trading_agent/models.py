@@ -1,7 +1,7 @@
 import json
 import re
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
@@ -146,6 +146,8 @@ def trade_result_detail(trade: Dict[str, Any]) -> str:
     if trade.get("status") == "executed":
         order_id = trade.get("order_id")
         return f"order_id={order_id}" if order_id else "—"
+    if trade.get("status") == "skipped":
+        return trade.get("failure_detail") or "skipped"
     return trade.get("failure_detail") or format_trade_failure(trade.get("error"))
 
 
@@ -155,6 +157,8 @@ def serialize_for_json(obj: Any) -> Any:
         return obj.isoformat()
     if isinstance(obj, uuid.UUID):
         return str(obj)
+    if is_dataclass(obj):
+        return {k: serialize_for_json(v) for k, v in asdict(obj).items()}
     if isinstance(obj, dict):
         return {k: serialize_for_json(v) for k, v in obj.items()}
     if isinstance(obj, list):

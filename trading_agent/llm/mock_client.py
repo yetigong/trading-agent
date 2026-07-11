@@ -48,6 +48,32 @@ class MockLLMClient(LLMClient):
                 }
             )
 
+        if "provide a comprehensive market analysis" in prompt_lower:
+            return (
+                "1. Market Overview\nMarkets are stable with moderate bullish trend.\n"
+                "2. Sector Analysis\nTechnology showing strength.\n"
+                "3. Risk Assessment\nLow to moderate risk.\n"
+                "4. Opportunities\nLarge-cap tech names."
+            )
+
+        if "provide technical analysis" in prompt_lower:
+            return (
+                "1. Price Action Analysis\nUptrend intact.\n"
+                "2. Technical Indicators\nRSI neutral.\n"
+                "3. Chart Patterns\nHigher highs.\n"
+                "4. Support/Resistance Levels\nSupport at recent lows.\n"
+                "5. Trading Signals\nMild bullish bias."
+            )
+
+        if "provide fundamental analysis" in prompt_lower:
+            return (
+                "1. Financial Metrics Analysis\nSolid balance sheets.\n"
+                "2. Industry Analysis\nTech leading.\n"
+                "3. Competitive Position\nLarge caps dominant.\n"
+                "4. Growth Prospects\nModerate growth.\n"
+                "5. Investment Themes\nQuality growth."
+            )
+
         if "comprehensive market analysis" in prompt_lower or "market analysis" in prompt_lower:
             return (
                 "1. Market Overview\nMarkets are stable with moderate bullish trend.\n"

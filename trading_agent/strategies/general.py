@@ -1,8 +1,10 @@
 import logging
-from typing import Dict, List, Any, Optional
+from typing import Dict, List
 
-from ..llm.client import get_llm_client, LLMClient
-from ..models import TRADING_DECISIONS_JSON_PROMPT, format_market_conditions, parse_trading_decisions
+from trading_agent.domain.cycle import StrategyContext, TradingDecision
+from trading_agent.formatters.strategy_context import format_strategy_context
+from trading_agent.llm.client import get_llm_client, LLMClient
+from trading_agent.models import TRADING_DECISIONS_JSON_PROMPT, parse_trading_decisions
 from .base import TradingStrategy
 
 logger = logging.getLogger(__name__)
@@ -11,50 +13,44 @@ logger = logging.getLogger(__name__)
 class GeneralTradingStrategy(TradingStrategy):
     """General trading strategy using LLM."""
 
-    def __init__(self, llm_client: Optional[LLMClient] = None, client_type: str = "openai", **kwargs):
+    def __init__(self, llm_client=None, client_type: str = "openai", **kwargs):
         self.llm_client = llm_client or get_llm_client(client_type, **kwargs)
 
-    def make_decisions(
-        self,
-        market_analysis: Dict[str, Any],
-        portfolio_data: Dict[str, Any],
-        user_preferences: Dict[str, Any],
-        strategy_params: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        strategy_params = strategy_params or {}
-        market_conditions = strategy_params.get("market_conditions")
-        market_context = format_market_conditions(market_conditions)
+    def make_decisions(self, context: StrategyContext) -> List[TradingDecision]:
+        strategy_params = context.strategy_params or {}
+        context_block = format_strategy_context(context)
 
-        context = f"""
-        {market_context}
-
-        Market Analysis:
-        {market_analysis.get('analysis', '')}
-
-        Current Portfolio Status:
-        - Account Value: ${portfolio_data.get('portfolio_value', 0)}
-        - Cash Balance: ${portfolio_data.get('cash', 0)}
-        - Current Positions: {portfolio_data.get('positions', [])}
-
-        User Preferences:
-        - Risk Tolerance: {user_preferences.get('risk_tolerance', 'moderate')}
-        - Investment Goal: {user_preferences.get('investment_goal', 'growth')}
-        - Max Position Size: {user_preferences.get('max_position_size', 0.1) * 100}% of portfolio
+        prompt = f"""
+        {context_block}
 
         Strategy Parameters:
         - Decision Timeframe: {strategy_params.get('timeframe', 'immediate')}
         - Risk Management: {strategy_params.get('risk_management', 'standard')}
         - Position Sizing: {strategy_params.get('position_sizing', 'dynamic')}
 
+        Synthesize general, technical, and fundamental analysis above with portfolio
+        constraints to produce realistic, executable trades.
+
         {TRADING_DECISIONS_JSON_PROMPT}
         """
 
         try:
-            response = self.llm_client.generate_response(context)
-            decisions = parse_trading_decisions(response)
+            response = self.llm_client.generate_response(prompt)
+            raw = parse_trading_decisions(response)
+            decisions = [
+                TradingDecision(
+                    action=d["action"],
+                    symbol=d["symbol"],
+                    quantity=d["quantity"],
+                    reasoning=d.get("reasoning", ""),
+                    risk_level=d.get("risk_level", "medium"),
+                    source="strategy",
+                )
+                for d in raw
+            ]
             return self.validate_decisions(decisions)
-        except Exception as e:
-            logger.error("Error in making trading decisions: %s", e)
+        except Exception as exc:
+            logger.error("Error in making trading decisions: %s", exc)
             return []
 
     def get_strategy_name(self) -> str:
@@ -63,34 +59,31 @@ class GeneralTradingStrategy(TradingStrategy):
     def get_supported_parameters(self) -> Dict[str, str]:
         return {
             "timeframe": "Decision timeframe (immediate, short-term, long-term)",
-            "risk_management": "Risk management approach (conservative, standard, aggressive)",
-            "position_sizing": "Position sizing method (fixed, dynamic, percentage-based)",
-            "max_positions": "Maximum number of concurrent positions",
-            "stop_loss": "Stop loss percentage",
-            "take_profit": "Take profit percentage",
+            "risk_management": "Risk management approach",
+            "position_sizing": "Position sizing method",
         }
 
-    def validate_decisions(self, decisions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        validated_decisions = []
+    def validate_decisions(self, decisions: List[TradingDecision]) -> List[TradingDecision]:
+        validated: List[TradingDecision] = []
 
         for decision in decisions:
-            if not all(k in decision for k in ["action", "symbol", "quantity", "reasoning", "risk_level"]):
+            if decision.action not in {"BUY", "SELL"}:
+                continue
+            if not decision.symbol:
                 continue
 
-            if decision["action"] not in ["BUY", "SELL"]:
-                continue
-
-            if decision["quantity"] != "ALL":
+            if decision.quantity != "ALL":
                 try:
-                    decision["quantity"] = int(decision["quantity"])
-                    if decision["quantity"] <= 0:
+                    qty = int(decision.quantity)
+                    if qty <= 0:
                         continue
-                except (ValueError, TypeError):
+                    decision.quantity = qty
+                except (TypeError, ValueError):
                     continue
 
-            if decision["risk_level"] not in ["low", "medium", "high"]:
-                continue
+            if decision.risk_level not in {"low", "medium", "high"}:
+                decision.risk_level = "medium"
 
-            validated_decisions.append(decision)
+            validated.append(decision)
 
-        return validated_decisions
+        return validated

@@ -7,7 +7,7 @@
 | `run_agent.py` | One cycle; validates config; saves artifact; prints summary |
 | `trading_service.py` | Loops forever via `TradingScheduler` every `TRADING_CYCLE_INTERVAL` minutes |
 
-Both delegate to `agent/trading_cycle.py` → `TradingAgent.run_trading_cycle()`.
+Both delegate to `trading_agent/orchestrator/cycle.py` → `TradingAgent.run_trading_cycle()`.
 
 ## Sequence
 
@@ -16,20 +16,24 @@ sequenceDiagram
     participant RA as run_agent / TradingCycle
     participant TA as TradingAgent
     participant MD as MarketDataProvider
-    participant LLM as LLMClient
+    participant AR as AnalysisRunner
+    participant STR as GeneralTradingStrategy
+    participant PRE as TradePreparer
     participant BRK as AlpacaClient
 
     RA->>TA: run_trading_cycle(params)
     TA->>MD: get_market_conditions()
-    TA->>LLM: analyze (via AnalysisStrategySelector)
-    TA->>LLM: make decisions (GeneralTradingStrategy)
-    alt decisions empty
-        TA-->>RA: hold=true, status success
+    TA->>BRK: PortfolioSnapshotBuilder.build()
+    TA->>AR: run(general + technical + fundamental)
+    TA->>STR: make_decisions(StrategyContext)
+    alt strategy decisions empty
+        TA->>TA: hold candidate
     else has decisions
-        TA->>LLM: rebalance (PortfolioRebalancer)
-        TA->>BRK: place_market_order per decision
-        TA-->>RA: executed_trades + status
+        TA->>TA: rebalance optional orders
     end
+    TA->>PRE: prepare(consolidate + validate)
+    TA->>BRK: TradeExecutor.execute(executable)
+    TA-->>RA: CycleResult + preparation + executed_trades
 ```
 
 ## Cycle result shape
@@ -38,8 +42,10 @@ Successful cycles return a dict including:
 
 - `status`: `"success"` or `"failed"`
 - `cycle_id`, `timestamp`
-- `analysis`, `analysis_strategy`, `market_conditions`
-- `decisions`: list of `{action, symbol, quantity, reasoning, risk_level}`
+- `market_conditions`, `market_analysis`
+- `analysis`, `analysis_strategy` (`"All Analysis Strategies"`)
+- `decisions`: consolidated list after preparation
+- `preparation`: `{raw, consolidated, executable, adjusted, skipped}`
 - `hold`: bool
 - `rebalancing`: plan dict or null
 - `executed_trades`: list with `status`, `order_id` or `failure_detail`
@@ -48,20 +54,22 @@ Artifacts are written to `logs/cycle_<timestamp>_<id>.json`.
 
 ## HOLD semantics
 
-An empty decision list from the strategy is **valid** — treated as HOLD, not an error. Rebalancing may still append sell/buy orders afterward.
+An empty decision list from the strategy is **valid** — treated as HOLD. Rebalancing may still append orders; preparation may skip or clip them.
 
 ## Common failure modes (live paper)
 
-| Symptom | Typical cause |
-|---------|----------------|
-| `insufficient qty` | LLM requested more shares than held |
-| `insufficient buying power` | Margin / short attempt without buying power |
-| Gemini `429 limit: 0` | Deprecated model id — use current Gemini 3.x models |
-| UUID JSON error | Fixed — order ids must be strings in trade results |
+| Symptom | Mitigation |
+|---------|------------|
+| `insufficient qty` | `TradeValidator` clips SELL to available shares |
+| `insufficient buying power` | Validator clips BUY; prompt shows buying power |
+| Wash trade | Validator skips when open opposite order exists |
+| Duplicate symbol orders | `TradeConsolidator` merges before submit |
 
 ## Safe places to change behavior
 
-- **Prompts / JSON format** — `trading_agent/strategies/general.py`, analysis modules
-- **What data LLM sees** — `format_market_conditions()`, portfolio data in `trader.py`
-- **Order execution** — `trader.py` → `execute_trades()`
-- **Summary output** — `run_agent.py` → `print_cycle_summary()`
+- **Prompts** — `trading_agent/formatters/`, `strategies/general.py`, `analysis/*.py`
+- **Domain models** — `trading_agent/domain/`
+- **Pre-trade rules** — `trading_agent/execution/validator.py`, `consolidator.py`
+- **Broker submit** — `trading_agent/execution/executor.py`
+- **Orchestration** — `trading_agent/orchestrator/agent.py`
+- **Summary output** — `run_agent.py`, `orchestrator/cycle.py`

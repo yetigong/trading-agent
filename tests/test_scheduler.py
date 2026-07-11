@@ -3,7 +3,7 @@ import threading
 import unittest
 import logging
 from scheduler.scheduler import TradingScheduler
-from agent.trading_cycle import TradingCycle
+from trading_agent.orchestrator.cycle import TradingCycle
 
 def setup_logging():
     """Configure logging for tests."""

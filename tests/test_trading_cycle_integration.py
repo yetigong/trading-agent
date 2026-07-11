@@ -1,7 +1,7 @@
 import unittest
 
 from mock_alpaca_client import MockAlpacaTradingClient
-from trader import TradingAgent
+from trading_agent.orchestrator.agent import TradingAgent
 from trading_agent.llm.mock_client import MockLLMClient
 from trading_agent.market_data.mock_provider import MockMarketDataProvider
 
@@ -23,6 +23,7 @@ class TestTradingCycleIntegration(unittest.TestCase):
         self.assertEqual(results["status"], "success")
         self.assertIn("cycle_id", results)
         self.assertIn("market_conditions", results)
+        self.assertIn("preparation", results)
         self.assertIsNotNone(results["analysis"])
         self.assertEqual(len(results["executed_trades"]), 1)
         self.assertEqual(results["executed_trades"][0]["status"], "executed")
