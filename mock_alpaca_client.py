@@ -1,5 +1,5 @@
-from typing import Any, Dict, List
-from datetime import datetime
+from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
 
 
 class MockAlpacaTradingClient:
@@ -23,10 +23,44 @@ class MockAlpacaTradingClient:
             "Account",
             (),
             {
+                "id": "mock-account-id",
+                "account_number": "MOCK0001",
+                "status": "ACTIVE",
+                "currency": "USD",
                 "portfolio_value": self.mock_account["portfolio_value"],
                 "cash": self.mock_account["cash"],
                 "buying_power": self.mock_account["buying_power"],
                 "equity": self.mock_account["equity"],
+                "last_equity": self.mock_account.get("last_equity", self.mock_account["equity"]),
+                "long_market_value": self.mock_account.get("long_market_value", 50000.0),
+                "short_market_value": 0.0,
+                "initial_margin": 0.0,
+                "maintenance_margin": 0.0,
+                "multiplier": 1.0,
+            },
+        )()
+
+    def get_portfolio_history(
+        self,
+        period: str = "1M",
+        timeframe: Optional[str] = None,
+        date_end: Optional[str] = None,
+        extended_hours: bool = False,
+    ) -> Any:
+        now = int(datetime.now(tz=timezone.utc).timestamp())
+        day = 86400
+        equities = [98000.0, 99500.0, 100000.0]
+        timestamps = [now - (2 * day), now - day, now]
+        return type(
+            "PortfolioHistory",
+            (),
+            {
+                "timestamp": timestamps,
+                "equity": equities,
+                "profit_loss": [0.0, 1500.0, 500.0],
+                "profit_loss_pct": [0.0, 0.0153, 0.005],
+                "base_value": equities[0],
+                "timeframe": timeframe or "1D",
             },
         )()
 

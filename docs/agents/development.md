@@ -26,6 +26,18 @@ Always use the venv: `.venv/bin/python …`
 .venv/bin/python trading_service.py
 ```
 
+**Account snapshot and equity history (read-only, Alpaca keys only):**
+
+```bash
+# Last month
+.venv/bin/python run_account_history.py
+
+# Past year, monthly breakdown
+.venv/bin/python run_account_history.py --period 1A --group-by month
+```
+
+See **[account-history.md](account-history.md)** for CLI options and module layout.
+
 **Verify Gemini API / model:**
 
 ```bash
@@ -62,6 +74,8 @@ When changing the trading pipeline (new layer, moved module, new data provider):
 1. Update the mermaid diagram in [`docs/PROJECT_PLAN.md`](../PROJECT_PLAN.md)
 2. Update [`codebase.md`](codebase.md) directory layout and domain model table
 3. Update [`trading-cycle.md`](trading-cycle.md) sequence diagram
+
+When changing account history mode, update [`account-history.md`](account-history.md) and the account sections in [`codebase.md`](codebase.md).
 
 ## Git / PR workflow
 

@@ -65,6 +65,7 @@ Use **bullets grouped by behavior**, not by file. Cover the main flows, subsyste
 | If you changed… | Describe as… |
 |-----------------|--------------|
 | `run_agent.py`, `trading_cycle.py` | Entry point / cycle orchestration |
+| `run_account_history.py`, `account/` | Account history mode |
 | `trader.py`, `execute_trades` | Trade execution flow |
 | `trading_agent/models.py`, strategy prompts | LLM decision parsing / prompts |
 | `trading_agent/config.py`, `.env.example` | Configuration |

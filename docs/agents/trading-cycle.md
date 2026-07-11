@@ -5,9 +5,10 @@
 | Script | Behavior |
 |--------|----------|
 | `run_agent.py` | One cycle; validates config; saves artifact; prints summary |
+| `run_account_history.py` | One account history fetch; Alpaca keys only; saves `logs/account_history_*.json` |
 | `trading_service.py` | Loops forever via `TradingScheduler` every `TRADING_CYCLE_INTERVAL` minutes |
 
-Both delegate to `trading_agent/orchestrator/cycle.py` → `TradingAgent.run_trading_cycle()`.
+Both trading scripts delegate to `trading_agent/orchestrator/`. Account history is separate — see **[account-history.md](account-history.md)**.
 
 ## Sequence
 

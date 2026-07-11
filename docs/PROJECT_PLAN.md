@@ -6,18 +6,20 @@ Last updated: 2026-07-11
 
 An **LLM-orchestrated trading platform** that runs periodic cycles: gather market intelligence → formulate strategies → execute trades → log outcomes → learn over time. Today the codebase is a **single monolithic trading agent** (Phase 1 MVP). The roadmap evolves it into a **multi-agent system** with persistence, management UX, and multi-tenant user support.
 
-### Current architecture (Phase 1.5 — layered pipeline)
+### Current architecture (Phase 1.6 — layered pipeline + account history)
 
 ```mermaid
 flowchart TB
     subgraph entry [Entry points]
         RA[run_agent.py]
+        RAH[run_account_history.py]
         TS[trading_service.py]
     end
 
     subgraph orchestrator [trading_agent/orchestrator]
         TC[TradingCycle]
         TA[TradingAgent]
+        AHM[AccountHistoryMode]
     end
 
     subgraph domain [trading_agent/domain]
@@ -54,6 +56,7 @@ flowchart TB
 
     RA --> TC --> TA
     TS --> TC
+    RAH --> AHM --> ALP_BRK
 
     ALP_MD --> MC
     ALP_MD --> MS
@@ -117,6 +120,7 @@ flowchart TD
 |-------|--------|---------|
 | **Phase 1** — Paper-trading MVP | **Done** | E2E cycle, env config, JSON decisions, artifacts, tests |
 | **Phase 1.5** — Valid trades + layered architecture | **Done** | Domain models, all-analysis runner, trade preparation, enriched portfolio |
+| **Phase 1.6** — Account history mode | **Done** | Read-only snapshot + equity history; `run_account_history.py`; monthly aggregation |
 | **Phase 2** — Richer market context | Planned | News, real indicators, deeper market data in prompts |
 | **Phase 3** — Backtesting | Planned | Historical replay, strategy comparison metrics |
 | **Phase 4** — Multi-agent architecture | Planned | Analyzer, strategizer, executor, logger, learner |
@@ -150,6 +154,22 @@ flowchart TD
 - ~~**Dedupe decisions**~~ — `TradeConsolidator` merges strategy + rebalancer orders
 - **Rebalancing order parsing** — LLM sometimes outputs non-numeric qty (still possible)
 - **Finnhub live integration** — stub provider; wire when `FINNHUB_API_KEY` is configured
+
+---
+
+## Phase 1.6: Account history mode — COMPLETE
+
+**Goal:** Read-only account snapshot and portfolio equity history, separate from the trading cycle.
+
+### Delivered
+
+- **Domain models** — `trading_agent/domain/account/` (`AccountSnapshot`, `AccountHistoryResult`)
+- **Fetcher** — `AccountHistoryFetcher` with query resolver and monthly aggregation
+- **Broker API** — `AlpacaTradingClient.get_portfolio_history()`
+- **Entry point** — `run_account_history.py` (Alpaca keys only; no LLM)
+- **Artifacts** — `logs/account_history_<timestamp>.json`
+- **Tests** — `tests/test_account_history.py`
+- **Docs** — `docs/agents/account-history.md`
 
 ---
 
@@ -339,8 +359,11 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 | Area | Path |
 |------|------|
 | Single-cycle entry | `run_agent.py` |
+| Account history entry | `run_account_history.py` |
 | Scheduled service | `trading_service.py` → `scheduler/scheduler.py` |
-| Cycle wrapper | `agent/trading_cycle.py` |
+| Cycle wrapper | `trading_agent/orchestrator/cycle.py` |
+| Account history mode | `trading_agent/orchestrator/account_history.py` |
+| Account history fetcher | `trading_agent/account/` |
 | Core orchestrator (today) | `trader.py` (`TradingAgent`) |
 | Config | `trading_agent/config.py` |
 | Models / parsing | `trading_agent/models.py` |
