@@ -17,6 +17,7 @@ sequenceDiagram
     participant RA as run_agent / TradingCycle
     participant TA as TradingAgent
     participant MD as MarketDataProvider
+    participant SA as SignalAggregator
     participant AR as AnalysisRunner
     participant STR as GeneralTradingStrategy
     participant PRE as TradePreparer
@@ -25,7 +26,9 @@ sequenceDiagram
     RA->>TA: run_trading_cycle(params)
     TA->>MD: get_market_conditions()
     TA->>BRK: PortfolioSnapshotBuilder.build()
-    TA->>AR: run(general + technical + fundamental)
+    TA->>SA: collect(conditions, portfolio)
+    SA-->>TA: MarketSignals
+    TA->>AR: run(general + technical + fundamental, signals)
     TA->>STR: make_decisions(StrategyContext)
     alt strategy decisions empty
         TA->>TA: hold candidate

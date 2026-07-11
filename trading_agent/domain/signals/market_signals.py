@@ -5,12 +5,17 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class MarketDataSignals:
     indices: Dict[str, Any] = field(default_factory=dict)
+    sector_etfs: Dict[str, Any] = field(default_factory=dict)
     summary: str = ""
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> "MarketDataSignals":
         data = data or {}
-        return cls(indices=data.get("indices") or {}, summary=data.get("summary", ""))
+        return cls(
+            indices=data.get("indices") or {},
+            sector_etfs=data.get("sector_etfs") or {},
+            summary=data.get("summary", ""),
+        )
 
 
 @dataclass

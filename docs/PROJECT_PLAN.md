@@ -32,7 +32,8 @@ flowchart TB
 
     subgraph dataProviders [Data providers]
         ALP_MD[AlpacaMarketDataProvider]
-        FIN[FinnhubNewsProvider stub]
+        FIN[FinnhubNewsProvider]
+        FMP[FMPFundamentalsProvider]
         ALP_BRK[AlpacaTradingClient]
     end
 
@@ -121,7 +122,7 @@ flowchart TD
 | **Phase 1** — Paper-trading MVP | **Done** | E2E cycle, env config, JSON decisions, artifacts, tests |
 | **Phase 1.5** — Valid trades + layered architecture | **Done** | Domain models, all-analysis runner, trade preparation, enriched portfolio |
 | **Phase 1.6** — Account history mode | **Done** | Read-only snapshot + equity history; `run_account_history.py`; monthly aggregation |
-| **Phase 2** — Richer market context | Planned | News, real indicators, deeper market data in prompts |
+| **Phase 2** — Richer market context | **Done** | RSI/MACD, sector ETFs, Finnhub news, FMP fundamentals in prompts |
 | **Phase 3** — Backtesting | Planned | Historical replay, strategy comparison metrics |
 | **Phase 4** — Multi-agent architecture | Planned | Analyzer, strategizer, executor, logger, learner |
 | **Phase 5** — Multi-broker | Planned | `BrokerClient` abstraction beyond Alpaca |
@@ -153,7 +154,7 @@ flowchart TD
 - ~~**Pre-trade validation**~~ — `TradePreparer` + `TradeValidator` clip/skip before broker submit
 - ~~**Dedupe decisions**~~ — `TradeConsolidator` merges strategy + rebalancer orders
 - **Rebalancing order parsing** — LLM sometimes outputs non-numeric qty (still possible)
-- **Finnhub live integration** — stub provider; wire when `FINNHUB_API_KEY` is configured
+- **Finnhub live integration** — done in Phase 2 (`FinnhubNewsProvider`)
 
 ---
 
@@ -173,17 +174,30 @@ flowchart TD
 
 ---
 
-## Phase 2: Richer Market Context
+## Phase 2: Richer Market Context — COMPLETE
 
 **Goal:** Ground LLM decisions in real, recent market signals. Feeds the future **Market Analyzer** agent (Phase 4).
+
+### Delivered
+
+- **Technical indicators** — `trading_agent/signals/indicators.py` (RSI, MACD, SMA); computed for SPY + portfolio symbols via `get_bars()`
+- **Sector ETFs** — 10 sector SPDRs in `AlpacaMarketDataProvider` with 5d relative strength vs SPY
+- **Live Finnhub news** — company + general headlines; `FINNHUB_API_KEY` optional
+- **Live FMP fundamentals** — P/E, ROE, revenue growth, earnings via `FMPFundamentalsProvider`; `FMP_API_KEY` optional
+- **Signal aggregation** — enriched `SignalAggregator` with `SignalCollectionContext` in `signals/sources.py`
+- **Prompt formatters** — richer `format_market_signals()` and sector rotation in `format_market_conditions()`
+- **Tests** — `test_indicators.py`, `test_signal_aggregator.py`, live integration tests for Finnhub/FMP
+- **Docs** — `docs/agents/market-signals.md`
+
+### Reference (original plan)
 
 | Work item | Approach |
 |-----------|----------|
 | Deeper market data in prompts | Index prices, SMA trend, volatility, sector ETFs (XLK, XLV, …) |
-| News / sentiment | `NewsDataProvider` ABC; first impl via Finnhub, Alpha Vantage, or RSS + summarization |
-| Real technical indicators | Compute RSI/MACD in Python; inject into `TechnicalAnalysisStrategy` |
-| Fundamentals (later) | Earnings, PE via Financial Modeling Prep or similar |
-| Extensible signal plugins | Each signal source as a pluggable module the analyzer can aggregate |
+| News / sentiment | `NewsDataProvider` ABC; Finnhub REST + heuristic sentiment |
+| Real technical indicators | Compute RSI/MACD in Python; inject into analysis prompts |
+| Fundamentals | Earnings, PE via Financial Modeling Prep |
+| Extensible signal plugins | Provider injection on `TradingAgent` / `SignalAggregator` |
 
 ---
 
@@ -341,7 +355,7 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 ## Recommended execution order
 
 1. ~~Phase 1 MVP~~ ✓
-2. **Phase 2** — richer market context (feeds Market Analyzer)
+2. ~~Phase 2~~ — richer market context ✓
 3. **Phase 1 follow-ups** — pre-trade validation, dedupe (small PRs alongside Phase 2)
 4. **Phase 3** — backtesting (required before strategizer can compare strategies)
 5. **Phase 4** — multi-agent architecture (core platform evolution)

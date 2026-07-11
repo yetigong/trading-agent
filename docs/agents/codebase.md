@@ -9,7 +9,7 @@ LLM-driven **paper trading** on Alpaca, plus a separate **account history** mode
 Each cycle:
 
 1. Fetch market conditions + portfolio snapshot (buying power, positions, open orders)
-2. Collect market signals (Alpaca + Finnhub stub)
+2. Collect market signals (Alpaca bars/indices/sectors + Finnhub news + FMP fundamentals)
 3. Run **all three** analysis strategies (general, technical, fundamental) via `AnalysisRunner`
 4. Build `StrategyContext` and run trading strategy + optional rebalancer
 5. **Prepare trades** — consolidate, validate, clip, order SELLs before BUYs
@@ -69,6 +69,7 @@ flowchart TB
 
 ```
 trading-agent/
+├── data.example/             # Committed JSON templates (one file per future SQL table)
 ├── run_agent.py
 ├── run_account_history.py  # read-only account snapshot + equity history
 ├── trading_service.py
@@ -80,15 +81,16 @@ trading-agent/
 │   │   ├── portfolio/        # PortfolioSnapshot, Position, OpenOrder
 │   │   ├── account/          # AccountSnapshot, AccountHistoryResult
 │   │   ├── cycle/            # StrategyContext, MarketAnalysis, CycleResult
-│   │   └── user/             # UserPreferences
+│   │   └── user/             # UserPreferences, SignalConfig, Watchlist
+│   ├── storage/              # JsonFileStore + per-domain stores (→ data/*.json)
 │   ├── orchestrator/         # TradingAgent, TradingCycle, AccountHistoryMode
 │   ├── account/              # AccountHistoryFetcher, query resolver, aggregation
 │   ├── execution/            # SnapshotBuilder, Consolidator, Validator, Preparer, Executor
 │   ├── analysis/             # AnalysisRunner + general/technical/fundamental
 │   ├── strategies/           # GeneralTradingStrategy
 │   ├── portfolio/            # PortfolioRebalancer
-│   ├── market_data/          # Alpaca + Finnhub + mock providers
-│   ├── signals/              # SignalAggregator
+│   ├── market_data/          # Alpaca + Finnhub + FMP + mock providers
+│   ├── signals/              # SignalAggregator, indicators, sources
 │   ├── formatters/           # Domain → LLM prompt text
 │   ├── models.py             # JSON parsing helpers
 │   └── llm/
@@ -101,7 +103,7 @@ trading-agent/
 
 | Model | Package | Role |
 |-------|---------|------|
-| `MarketConditions` | `domain/signals` | Index trend, volatility from Alpaca |
+| `MarketConditions` | `domain/signals` | Index trend, volatility, sector ETFs from Alpaca |
 | `MarketSignals` | `domain/signals` | Aggregated data/technical/news/fundamental slices |
 | `PortfolioSnapshot` | `domain/portfolio` | Account, positions with qty, open orders (trading cycle) |
 | `AccountSnapshot` | `domain/account` | Margin-aware account state for history mode |
@@ -111,6 +113,9 @@ trading-agent/
 | `TradingDecision` | `domain/cycle` | Typed BUY/SELL with source tag |
 | `TradePreparationResult` | `domain/cycle` | raw / consolidated / executable / adjusted / skipped |
 | `CycleResult` | `domain/cycle` | Top-level artifact |
+| `UserPreferences` | `domain/user` | Risk tolerance, goals — `data/preferences.json` |
+| `SignalConfig` | `domain/user` | Sector ETFs, enabled sources — `data/signal_config.json` |
+| `Watchlist` | `domain/user` | Symbols of interest — `data/watchlist.json` (stored, not yet wired) |
 
 ## Important interfaces
 
@@ -118,7 +123,8 @@ trading-agent/
 |-----------|----------|-----------------|
 | `LLMClient` | `trading_agent/llm/base.py` | gemini, claude, openai, huggingface, mock |
 | `MarketDataProvider` | `trading_agent/market_data/base.py` | alpaca, mock |
-| `NewsDataProvider` | `trading_agent/market_data/news_base.py` | finnhub (stub) |
+| `NewsDataProvider` | `trading_agent/market_data/news_base.py` | finnhub, mock |
+| `FundamentalDataProvider` | `trading_agent/market_data/fundamentals_base.py` | fmp, mock |
 | `AnalysisStrategy` | `trading_agent/analysis/base.py` | general, technical, fundamental |
 | `AnalysisRunner` | `trading_agent/analysis/runner.py` | runs all three per cycle |
 | `TradingStrategy` | `trading_agent/strategies/base.py` | general |
@@ -132,7 +138,7 @@ trading-agent/
 |------|-----------------|
 | New LLM provider | `trading_agent/llm/` + `get_llm_client()` |
 | New analysis strategy | `trading_agent/analysis/` + register in `AnalysisRunner` |
-| New data/signal source | `trading_agent/market_data/` + `SignalAggregator` |
+| New data/signal source | `trading_agent/market_data/` + `SignalAggregator`; see [market-signals.md](market-signals.md) |
 | Pre-trade rules | `trading_agent/execution/validator.py` |
 | Trade consolidation | `trading_agent/execution/consolidator.py` |
 | Cycle orchestration | `trading_agent/orchestrator/agent.py` |

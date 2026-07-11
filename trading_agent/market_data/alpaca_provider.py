@@ -1,41 +1,63 @@
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
+
+from trading_agent.domain.user.signal_config import DEFAULT_SECTOR_ETFS, SignalConfig
+from trading_agent.storage.signal_config_store import SignalConfigStore
+
 from .base import MarketDataProvider
+
+
+def _default_sector_etfs() -> List[str]:
+    try:
+        return SignalConfigStore().load_config().sector_etfs
+    except Exception:
+        return list(DEFAULT_SECTOR_ETFS)
+
 
 class AlpacaMarketDataProvider(MarketDataProvider):
     """Market data provider using Alpaca's API."""
-    
-    def __init__(self):
+
+    def __init__(self, sector_etfs: Optional[List[str]] = None):
         self.api_key = os.getenv('ALPACA_API_KEY')
         self.secret_key = os.getenv('ALPACA_SECRET_KEY')
         if not self.api_key or not self.secret_key:
             raise ValueError("Alpaca API credentials not found in environment variables")
-        
+
         # Initialize client with IEX data feed
         self.client = StockHistoricalDataClient(
             api_key=self.api_key,
             secret_key=self.secret_key
         )
-        
+
         # Market indices to track
         self.indices = ['SPY', 'QQQ', 'DIA', 'IWM']  # S&P 500, Nasdaq, Dow Jones, Russell 2000
+        self.sector_etfs = sector_etfs if sector_etfs is not None else _default_sector_etfs()
     
     def get_market_conditions(self) -> Dict[str, Any]:
         """Get current market conditions using Alpaca data."""
+        indices = self._get_indices_data()
+        sector_etfs = self._get_sector_etfs_data()
         return {
             "volatility": self.get_market_volatility(),
             "trend": self.get_market_trend(),
             "economic_cycle": self.get_economic_cycle(),
             "market_phase": self.get_market_phase(),
             "timestamp": datetime.now(),
-            "indices": self._get_indices_data()
+            "indices": indices,
+            "sector_etfs": sector_etfs,
         }
+
+    def get_bars(self, symbol: str, days: int = 100) -> Optional[pd.DataFrame]:
+        """Get daily OHLCV bars for a symbol."""
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+        return self._get_historical_data(symbol, start_date, end_date)
     
     def get_market_volatility(self) -> str:
         """Calculate market volatility using VIX or similar metrics."""
@@ -151,7 +173,8 @@ class AlpacaMarketDataProvider(MarketDataProvider):
             "trend": "Market trend (bullish, neutral, bearish)",
             "economic_cycle": "Economic cycle phase (expansion, peak, contraction, trough)",
             "market_phase": "Market phase (normal, bubble, crash, recovery)",
-            "indices": "Major market indices (SPY, QQQ, DIA, IWM)"
+            "indices": "Major market indices (SPY, QQQ, DIA, IWM)",
+            "sector_etfs": "Sector SPDR ETFs with relative strength vs SPY",
         }
     
     def _get_historical_data(self, symbol: str, start_date: datetime, end_date: datetime) -> Optional[pd.DataFrame]:
@@ -199,4 +222,45 @@ class AlpacaMarketDataProvider(MarketDataProvider):
             except Exception as e:
                 print(f"Error fetching data for {index}: {str(e)}")
         
-        return indices_data 
+        return indices_data
+
+    def _period_return(self, data: pd.DataFrame, days: int) -> Optional[float]:
+        if data is None or len(data) < days + 1:
+            return None
+        start_price = data['close'].iloc[-(days + 1)]
+        end_price = data['close'].iloc[-1]
+        if start_price == 0:
+            return None
+        return (end_price / start_price - 1) * 100
+
+    def _get_sector_etfs_data(self) -> Dict[str, Any]:
+        """Get sector ETF data with relative strength vs SPY over 5 days."""
+        sector_data: Dict[str, Any] = {}
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
+
+        spy_data = self._get_historical_data('SPY', start_date, end_date)
+        spy_return_5d = self._period_return(spy_data, 5) if spy_data is not None else None
+
+        for etf in self.sector_etfs:
+            try:
+                data = self._get_historical_data(etf, start_date, end_date)
+                if data is None or data.empty:
+                    continue
+
+                return_5d = self._period_return(data, 5)
+                entry: Dict[str, Any] = {
+                    "current_price": float(data['close'].iloc[-1]),
+                    "daily_change": float(
+                        (data['close'].iloc[-1] / data['close'].iloc[-2] - 1) * 100
+                    ) if len(data) >= 2 else 0.0,
+                    "volume": int(data['volume'].iloc[-1]),
+                    "return_5d": round(return_5d, 2) if return_5d is not None else None,
+                }
+                if return_5d is not None and spy_return_5d is not None:
+                    entry["vs_spy_5d"] = round(return_5d - spy_return_5d, 2)
+                sector_data[etf] = entry
+            except Exception as e:
+                print(f"Error fetching data for {etf}: {str(e)}")
+
+        return sector_data

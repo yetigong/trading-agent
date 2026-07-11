@@ -38,6 +38,7 @@ env/
 
 # Logs
 logs/
+data/
 *.log
 *.log.*
 *.log-* 

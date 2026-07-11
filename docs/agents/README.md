@@ -8,7 +8,8 @@ Use these guides when implementing features, fixing bugs, or opening pull reques
 2. **[development.md](development.md)** — env, commands, testing, coding conventions
 3. **[trading-cycle.md](trading-cycle.md)** — the main runtime flow and where to hook changes
 4. **[account-history.md](account-history.md)** — read-only account snapshot and equity history mode
-5. **[pr-description.md](pr-description.md)** — required PR description format
+5. **[market-signals.md](market-signals.md)** — Phase 2 signal slices, env keys, extension guide
+6. **[pr-description.md](pr-description.md)** — required PR description format
 
 Also see **[../PROJECT_PLAN.md](../PROJECT_PLAN.md)** for roadmap and phase status.
 

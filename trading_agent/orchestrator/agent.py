@@ -19,6 +19,9 @@ from trading_agent.execution import (
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from trading_agent.market_data.base import MarketDataProvider
 from trading_agent.market_data.finnhub_provider import FinnhubNewsProvider
+from trading_agent.market_data.fmp_provider import FMPFundamentalsProvider
+from trading_agent.market_data.fundamentals_base import FundamentalDataProvider
+from trading_agent.market_data.news_base import NewsDataProvider
 from trading_agent.llm.client import get_llm_client, LLMClient
 from trading_agent.portfolio.rebalancer import PortfolioRebalancer
 from trading_agent.signals.aggregator import SignalAggregator
@@ -37,6 +40,8 @@ class TradingAgent:
         client_type: str = "openai",
         market_data_provider: Optional[MarketDataProvider] = None,
         alpaca_client: Optional[Any] = None,
+        news_provider: Optional[NewsDataProvider] = None,
+        fundamentals_provider: Optional[FundamentalDataProvider] = None,
         **kwargs,
     ):
         load_dotenv()
@@ -46,8 +51,13 @@ class TradingAgent:
         self.trading_strategy = GeneralTradingStrategy(llm_client=self.llm_client)
         self.portfolio_rebalancer = PortfolioRebalancer(llm_client=self.llm_client)
         self.market_data_provider = market_data_provider or AlpacaMarketDataProvider()
-        self.news_provider = FinnhubNewsProvider()
-        self.signal_aggregator = SignalAggregator(self.market_data_provider, self.news_provider)
+        self.news_provider = news_provider or FinnhubNewsProvider()
+        self.fundamentals_provider = fundamentals_provider or FMPFundamentalsProvider()
+        self.signal_aggregator = SignalAggregator(
+            self.market_data_provider,
+            self.news_provider,
+            self.fundamentals_provider,
+        )
         self.alpaca_client = alpaca_client or AlpacaTradingClient()
         self.snapshot_builder = PortfolioSnapshotBuilder()
         self.trade_preparer = TradePreparer()
