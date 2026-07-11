@@ -1,11 +1,12 @@
 import logging
 from scheduler.scheduler import TradingScheduler
 from agent.trading_cycle import TradingCycle
+from trading_agent.config import get_config
 
-def setup_logging():
+def setup_logging(log_level: str = "INFO"):
     """Configure logging for the trading service."""
     logging.basicConfig(
-        level=logging.INFO,
+        level=getattr(logging, log_level, logging.INFO),
         format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
         handlers=[
             logging.StreamHandler(),
@@ -15,17 +16,18 @@ def setup_logging():
 
 def main():
     """Main entry point for the trading service."""
-    # Setup logging
-    setup_logging()
+    config = get_config()
+    setup_logging(config.log_level)
     logger = logging.getLogger(__name__)
     
     try:
-        # Create trading cycle instance
         trading_cycle = TradingCycle()
-        
-        # Create and start scheduler
-        scheduler = TradingScheduler(interval_minutes=30)
-        logger.info("Starting trading service with enhanced logging...")
+        scheduler = TradingScheduler(interval_minutes=config.trading_cycle_interval)
+        logger.info(
+            "Starting trading service (interval=%d min, llm=%s)...",
+            config.trading_cycle_interval,
+            config.llm_provider,
+        )
         scheduler.start(trading_cycle.execute)
         
     except Exception as e:

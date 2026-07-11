@@ -35,8 +35,9 @@ class MockAlpacaTradingClient:
         # Find the position
         position = next((p for p in self.mock_account["positions"] if p["symbol"] == symbol), None)
         
-        # Validate order
-        if side == "SELL":
+        side_value = getattr(side, "value", str(side)).upper()
+
+        if side_value == "SELL":
             if not position or position["qty"] < qty:
                 raise Exception({
                     "available": "0",
@@ -61,9 +62,9 @@ class MockAlpacaTradingClient:
         
         # Update position
         if position:
-            if side == "BUY":
+            if side_value == "BUY":
                 position["qty"] += qty
-            else:  # SELL
+            else:
                 position["qty"] -= qty
         
         return type('Order', (), {'id': order['id']})()
