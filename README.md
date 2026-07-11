@@ -79,18 +79,23 @@ podman run -d --name trading-agent \
 
 ```
 trading-agent/
-├── agent/                 # Trading cycle orchestration
-├── trading_agent/         # Core package (analysis, LLM, market data, strategies)
-├── scheduler/             # Periodic cycle scheduler
-├── aws/deployment/        # Docker + ECS deployment
-├── docs/                  # Project plan and agent guides
-├── tests/                 # Unit, mock integration, and live integration tests
-│   └── integration/       # Live API checks (skip when keys absent)
-├── run_agent.py           # MVP single-cycle entry point
-├── trading_service.py     # Scheduled service entry point
-├── .env.example           # Environment variable template
-└── requirements.txt       # Python dependencies
+├── trading_agent/
+│   ├── domain/             # Typed pipeline models
+│   ├── orchestrator/       # TradingAgent + TradingCycle
+│   ├── execution/          # Trade preparation + broker submit
+│   ├── analysis/           # AnalysisRunner (all 3 strategies)
+│   ├── strategies/         # Trading decision strategies
+│   ├── market_data/        # Alpaca + Finnhub providers
+│   └── formatters/         # Domain → LLM prompts
+├── scheduler/              # Periodic cycle scheduler
+├── aws/deployment/         # Docker + ECS deployment
+├── docs/                   # Project plan and agent guides
+├── tests/
+├── run_agent.py            # MVP single-cycle entry point
+└── trading_service.py      # Scheduled service entry point
 ```
+
+See **[Project plan](docs/PROJECT_PLAN.md)** for the full layered architecture diagram.
 
 ## Documentation
 
@@ -103,7 +108,7 @@ trading-agent/
 The project provides a `TradingAgent` class that handles the entire trading cycle:
 
 ```python
-from trader import TradingAgent
+from trading_agent.orchestrator.agent import TradingAgent
 from trading_agent.llm.client import get_llm_client
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from alpaca_client import AlpacaTradingClient

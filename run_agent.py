@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from agent.trading_cycle import TradingCycle
+from trading_agent.orchestrator.cycle import TradingCycle
 from trading_agent.config import config_summary, get_config, validate_config
 from trading_agent.models import serialize_for_json, trade_result_detail
 
@@ -34,9 +34,13 @@ def print_cycle_summary(results: dict) -> None:
         print(f"Error: {results.get('error', 'Unknown error')}")
         return
 
-    print(f"Analysis Strategy: {results.get('analysis_strategy')}")
+    print(f"Analysis: {results.get('analysis_strategy', 'All Analysis Strategies')}")
     print(f"Hold: {results.get('hold', False)}")
     print(f"Decisions: {len(results.get('decisions', []))}")
+    preparation = results.get("preparation") or {}
+    if preparation:
+        print(f"Adjusted Trades: {len(preparation.get('adjusted', []))}")
+        print(f"Skipped Trades: {len(preparation.get('skipped', []))}")
     print(f"Executed Trades: {len(results.get('executed_trades', []))}")
 
     trades = results.get("executed_trades", [])

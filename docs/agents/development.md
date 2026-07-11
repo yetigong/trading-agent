@@ -34,36 +34,40 @@ Always use the venv: `.venv/bin/python …`
 
 ## Tests
 
-Run the full suite (unit, mock integration, and live integration when keys are present):
-
 ```bash
 .venv/bin/bash scripts/run_tests.sh
 ```
 
-Or directly:
+Or:
 
 ```bash
 .venv/bin/python -m unittest discover tests -v
 ```
 
-- **`tests/`** — unit tests and mock-based integration (`LLM_PROVIDER=mock`, injected mocks); no live API keys required
-- **`tests/integration/`** — live Alpaca/LLM connectivity checks; auto-skipped in CI without secrets
-- **Do not add root-level `test_*.py`** — move live checks to `tests/integration/` or one-off scripts to `scripts/`
+Unit tests in `tests/` use mock LLM/Alpaca and do not require API keys. Live integration tests in `tests/integration/` run when keys are present.
 
 ## Coding conventions
 
-- **Python 3.9+** compatible (match existing style)
+- **Python 3.9+** compatible
 - **Logging** over `print()` in library/orchestration code
-- **Env config** — add new settings to `config.py` + `.env.example`, validate in `validate_config()`
-- **LLM decisions** — JSON array under `"decisions"` key; parsed by `parse_trading_decisions()`
-- **Errors from Alpaca** — store on trade dict as `error` + human `failure_detail` via `format_trade_failure()`
-- **JSON artifacts** — use `serialize_for_json()` for UUID/datetime safety
+- **Domain models** in `trading_agent/domain/` — pass between layers; use `formatters/` for LLM prompts
+- **LLM decisions** — JSON under `"decisions"`; parsed by `parse_trading_decisions()`
+- **Trade preparation** — always run through `TradePreparer` before `TradeExecutor`
+- **JSON artifacts** — use `serialize_for_json()` for UUID/datetime/dataclass safety
+
+## Architecture documentation
+
+When changing the trading pipeline (new layer, moved module, new data provider):
+
+1. Update the mermaid diagram in [`docs/PROJECT_PLAN.md`](../PROJECT_PLAN.md)
+2. Update [`codebase.md`](codebase.md) directory layout and domain model table
+3. Update [`trading-cycle.md`](trading-cycle.md) sequence diagram
 
 ## Git / PR workflow
 
 - Branch from `main`; keep PRs focused
 - Follow [pr-description.md](pr-description.md) for PR body format
-- Do not commit `.env`, credentials, or `logs/` cycle artifacts with secrets
+- Do not commit `.env`, credentials, or `logs/` cycle artifacts
 - Run tests before pushing — `.venv/bin/bash scripts/run_tests.sh`
 
 ## Docker

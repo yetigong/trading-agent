@@ -6,39 +6,76 @@ Last updated: 2026-07-11
 
 An **LLM-orchestrated trading platform** that runs periodic cycles: gather market intelligence → formulate strategies → execute trades → log outcomes → learn over time. Today the codebase is a **single monolithic trading agent** (Phase 1 MVP). The roadmap evolves it into a **multi-agent system** with persistence, management UX, and multi-tenant user support.
 
-### Current architecture (Phase 1)
+### Current architecture (Phase 1.5 — layered pipeline)
 
 ```mermaid
-flowchart TD
+flowchart TB
     subgraph entry [Entry points]
         RA[run_agent.py]
         TS[trading_service.py]
     end
 
-    subgraph orchestration [Orchestration]
+    subgraph orchestrator [trading_agent/orchestrator]
         TC[TradingCycle]
         TA[TradingAgent]
     end
 
-    subgraph intelligence [LLM layer]
-        AS[Analysis strategies]
-        STRAT[GeneralTradingStrategy]
+    subgraph domain [trading_agent/domain]
+        MC[MarketConditions]
+        MS[MarketSignals]
+        PS[PortfolioSnapshot]
+        MA[MarketAnalysis]
+        SC[StrategyContext]
+    end
+
+    subgraph dataProviders [Data providers]
+        ALP_MD[AlpacaMarketDataProvider]
+        FIN[FinnhubNewsProvider stub]
+        ALP_BRK[AlpacaTradingClient]
+    end
+
+    subgraph analysis [trading_agent/analysis]
+        AR[AnalysisRunner]
+        GEN[GeneralAnalysis]
+        TECH[TechnicalAnalysis]
+        FUND[FundamentalAnalysis]
+    end
+
+    subgraph strategy [Strategy layer]
+        STR[GeneralTradingStrategy]
         REB[PortfolioRebalancer]
     end
 
-    subgraph external [External services]
-        LLM[LLM provider]
-        MD[Alpaca market data]
-        BRK[Alpaca broker]
+    subgraph execution [trading_agent/execution]
+        PSB[PortfolioSnapshotBuilder]
+        PRE[TradePreparer]
+        EXT[TradeExecutor]
     end
 
     RA --> TC --> TA
     TS --> TC
-    TA --> AS --> LLM
-    TA --> STRAT --> LLM
-    TA --> REB --> LLM
-    TA --> MD --> BRK
+
+    ALP_MD --> MC
+    ALP_MD --> MS
+    FIN --> MS
+    ALP_BRK --> PSB --> PS
+
+    MC --> AR
+    MS --> AR
+    PS --> AR
+    AR --> GEN --> MA
+    AR --> TECH --> MA
+    AR --> FUND --> MA
+
+    MC --> SC
+    MA --> SC
+    PS --> SC
+    SC --> STR --> PRE
+    STR --> REB --> PRE
+    PRE --> EXT --> ALP_BRK
 ```
+
+**Update this diagram** when changing the trading pipeline (see `docs/agents/development.md`).
 
 ### Target architecture (Phase 4+)
 
@@ -78,7 +115,8 @@ flowchart TD
 
 | Phase | Status | Summary |
 |-------|--------|---------|
-| **Phase 1** — Paper-trading MVP | **Done** (merged) | E2E cycle, env config, JSON decisions, artifacts, tests |
+| **Phase 1** — Paper-trading MVP | **Done** | E2E cycle, env config, JSON decisions, artifacts, tests |
+| **Phase 1.5** — Valid trades + layered architecture | **Done** | Domain models, all-analysis runner, trade preparation, enriched portfolio |
 | **Phase 2** — Richer market context | Planned | News, real indicators, deeper market data in prompts |
 | **Phase 3** — Backtesting | Planned | Historical replay, strategy comparison metrics |
 | **Phase 4** — Multi-agent architecture | Planned | Analyzer, strategizer, executor, logger, learner |
@@ -106,13 +144,12 @@ flowchart TD
 - **Tests** — decision parsing, trading cycle integration (mock LLM/Alpaca), trade failure formatting, scheduler (10 tests)
 - **Deploy/docs touch** — `docker-compose.yml` Dockerfile path, README MVP section
 
-### Known follow-ups (post-merge)
+### Known follow-ups (post-merge) — addressed in Phase 1.5
 
-These surfaced during live paper runs but are **not** blockers for Phase 1:
-
-- **Pre-trade validation** — cap sell quantities to available shares before submitting to Alpaca
-- **Dedupe decisions** — strategy + rebalancing can emit duplicate orders for the same symbol
-- **Rebalancing order parsing** — LLM sometimes outputs `"All shares"` instead of numeric qty
+- ~~**Pre-trade validation**~~ — `TradePreparer` + `TradeValidator` clip/skip before broker submit
+- ~~**Dedupe decisions**~~ — `TradeConsolidator` merges strategy + rebalancer orders
+- **Rebalancing order parsing** — LLM sometimes outputs non-numeric qty (still possible)
+- **Finnhub live integration** — stub provider; wire when `FINNHUB_API_KEY` is configured
 
 ---
 
