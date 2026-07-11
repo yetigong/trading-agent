@@ -2,6 +2,7 @@ import os
 from typing import Dict, Any, Optional
 from datetime import datetime
 from ..llm.client import get_llm_client, LLMClient
+from ..models import format_market_conditions
 from .base import AnalysisStrategy
 
 class GeneralAnalysisStrategy(AnalysisStrategy):
@@ -25,8 +26,12 @@ class GeneralAnalysisStrategy(AnalysisStrategy):
         Returns:
             Dictionary containing analysis results
         """
-        # Prepare context for LLM
+        market_conditions = (analysis_params or {}).get("market_conditions")
+        market_context = format_market_conditions(market_conditions)
+
         context = f"""
+        {market_context}
+
         Current Portfolio:
         - Total Value: ${portfolio_data.get('portfolio_value', 0)}
         - Cash Balance: ${portfolio_data.get('cash', 0)}

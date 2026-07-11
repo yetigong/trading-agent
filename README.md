@@ -22,20 +22,51 @@ This project implements an AI-powered trading agent that uses Claude (Anthropic'
 pip install -r requirements.txt
 ```
 
-2. Create a `.env` file in the project root and add your API credentials:
+2. Copy the example env file and add your API credentials:
+```bash
+cp .env.example .env
+```
+
+Required variables for the MVP paper-trading demo:
 ```
 ALPACA_API_KEY=your_api_key_here
 ALPACA_SECRET_KEY=your_secret_key_here
-ALPACA_PAPER=True  # Set to False for live trading
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
+ALPACA_PAPER=true
+GOOGLE_API_KEY=your_google_api_key_here   # if LLM_PROVIDER=gemini (default)
+LLM_PROVIDER=gemini
+LLM_MODEL=financial
 ```
 
 3. Replace the API keys with your actual credentials.
 
+## MVP Demo (Paper Trading E2E)
+
+Run a single end-to-end paper trading cycle:
+
+```bash
+python run_agent.py
+```
+
+This will:
+1. Validate your `.env` configuration
+2. Fetch live market conditions from Alpaca
+3. Run LLM market analysis and trading decisions
+4. Execute paper trades via Alpaca
+5. Save a JSON artifact to `logs/cycle_<timestamp>_<id>.json`
+6. Print a human-readable summary
+
+Expected success output includes `Status: success`, analysis strategy used, and any executed trades with order IDs.
+
+For the scheduled service (runs every `TRADING_CYCLE_INTERVAL` minutes, default 30):
+
+```bash
+python trading_service.py
+```
+
 4. For local development with Podman:
 ```bash
 # Build the container
-podman build -t trading-agent .
+podman build -t trading-agent -f aws/deployment/Dockerfile .
 
 # Run the container
 podman run -d --name trading-agent \
@@ -48,16 +79,15 @@ podman run -d --name trading-agent \
 
 ```
 trading-agent/
-├── agent/                 # Core trading agent implementation
-├── aws/                   # AWS deployment configurations
-├── logs/                  # Application logs
-├── market_data/          # Market data providers
-├── tests/                # Unit and integration tests
-├── .env                  # Environment variables
-├── .gitignore           # Git ignore rules
-├── Dockerfile           # Container definition
-├── README.md            # Project documentation
-└── requirements.txt     # Python dependencies
+├── agent/                 # Trading cycle orchestration
+├── trading_agent/         # Core package (analysis, LLM, market data, strategies)
+├── scheduler/             # Periodic cycle scheduler
+├── aws/deployment/        # Docker + ECS deployment
+├── tests/                 # Unit and integration tests
+├── run_agent.py           # MVP single-cycle entry point
+├── trading_service.py     # Scheduled service entry point
+├── .env.example           # Environment variable template
+└── requirements.txt       # Python dependencies
 ```
 
 ## Usage

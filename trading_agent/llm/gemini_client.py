@@ -5,17 +5,16 @@ from .base import LLMClient
 
 class GeminiClient(LLMClient):
     """Google's Gemini API client implementation."""
-    
-    # Default model to use
-    DEFAULT_MODEL = "gemini-2.0-flash"
-    
-    # Available models - using the same model for all tasks for simplicity
+
+    # Default model — gemini-2.0-flash was shut down June 2026; use a current model.
+    DEFAULT_MODEL = "gemini-3.1-flash-lite-preview"
+
     AVAILABLE_MODELS = {
-        "general": "gemini-2.0-flash",
-        "financial": "gemini-2.0-flash",
-        "code": "gemini-2.0-flash",
-        "small": "gemini-2.0-flash",
-        "large": "gemini-2.0-flash"
+        "general": "gemini-3.1-flash-lite-preview",
+        "financial": "gemini-3.1-flash-lite-preview",
+        "code": "gemini-3.5-flash",
+        "small": "gemini-3.1-flash-lite-preview",
+        "large": "gemini-3.5-flash",
     }
     
     def __init__(self, model: str = None, api_key: str = None):
@@ -82,8 +81,17 @@ Now, based on the following information, provide your trading decisions:
                     "max_output_tokens": 1024,
                 }
             )
-            
-            return response.text
+
+            if not response.candidates:
+                raise ValueError("Gemini returned no candidates")
+
+            text = response.text
+            if not text:
+                raise ValueError(
+                    f"Gemini returned empty text (finish_reason={response.candidates[0].finish_reason})"
+                )
+
+            return text
             
         except Exception as e:
             raise Exception(f"Error generating response from Gemini: {str(e)}")
@@ -116,11 +124,11 @@ Task:
     def get_available_models(cls) -> Dict[str, str]:
         """Get a dictionary of available models and their descriptions."""
         return {
-            "general": "Gemini 2.0 Flash: Latest model for all tasks",
-            "financial": "Gemini 2.0 Flash: Latest model for all tasks",
-            "code": "Gemini 2.0 Flash: Latest model for all tasks",
-            "small": "Gemini 2.0 Flash: Latest model for all tasks",
-            "large": "Gemini 2.0 Flash: Latest model for all tasks"
+            "general": "Gemini 3.1 Flash Lite Preview: fast, free-tier friendly default",
+            "financial": "Gemini 3.1 Flash Lite Preview: fast, free-tier friendly default",
+            "code": "Gemini 3.5 Flash: higher capability",
+            "small": "Gemini 3.1 Flash Lite Preview",
+            "large": "Gemini 3.5 Flash",
         }
     
     def switch_model(self, model: str) -> None:

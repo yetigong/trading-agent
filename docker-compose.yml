@@ -4,7 +4,7 @@ services:
   trading-agent:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: aws/deployment/Dockerfile
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
