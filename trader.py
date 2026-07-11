@@ -13,6 +13,7 @@ from trading_agent.portfolio.rebalancer import PortfolioRebalancer
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from trading_agent.market_data.base import MarketDataProvider
 from trading_agent.llm.client import get_llm_client, LLMClient
+from trading_agent.models import format_trade_failure
 
 logger = logging.getLogger(__name__)
 
@@ -144,18 +145,20 @@ class TradingAgent:
                         "action": decision["action"],
                         "quantity": quantity,
                         "status": "executed",
-                        "order_id": order.id,
+                        "order_id": str(order.id),
                     }
                 )
 
             except Exception as e:
+                error_str = str(e)
                 executed_trades.append(
                     {
                         "symbol": decision["symbol"],
                         "action": decision["action"],
                         "quantity": decision["quantity"],
                         "status": "failed",
-                        "error": str(e),
+                        "error": error_str,
+                        "failure_detail": format_trade_failure(error_str),
                     }
                 )
 

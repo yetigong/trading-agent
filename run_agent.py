@@ -5,7 +5,7 @@ from pathlib import Path
 
 from agent.trading_cycle import TradingCycle
 from trading_agent.config import config_summary, get_config, validate_config
-from trading_agent.models import serialize_for_json
+from trading_agent.models import serialize_for_json, trade_result_detail
 
 LOG_DIR = Path("logs")
 
@@ -39,11 +39,16 @@ def print_cycle_summary(results: dict) -> None:
     print(f"Decisions: {len(results.get('decisions', []))}")
     print(f"Executed Trades: {len(results.get('executed_trades', []))}")
 
-    for trade in results.get("executed_trades", []):
-        line = f"  - {trade['action']} {trade['quantity']} {trade['symbol']}: {trade['status']}"
-        if trade.get("order_id"):
-            line += f" (order_id={trade['order_id']})"
-        print(line)
+    trades = results.get("executed_trades", [])
+    if trades:
+        print(f"\n  {'Action':<6} {'Qty':>5}  {'Symbol':<6} {'Status':<9} Details")
+        print(f"  {'-' * 6} {'-' * 5}  {'-' * 6} {'-' * 9} {'-' * 40}")
+        for trade in trades:
+            qty = trade.get("quantity", "")
+            print(
+                f"  {trade['action']:<6} {str(qty):>5}  "
+                f"{trade['symbol']:<6} {trade['status']:<9} {trade_result_detail(trade)}"
+            )
 
     print("=" * 60)
 

@@ -1,6 +1,7 @@
 from trader import TradingAgent
 from trading_agent.config import config_summary, get_config
 from trading_agent.llm.client import get_llm_client
+from trading_agent.models import trade_result_detail
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from alpaca_client import AlpacaTradingClient
 import json
@@ -123,6 +124,15 @@ class TradingCycle:
                 failed_trades = sum(1 for trade in results["executed_trades"] if trade["status"] == "failed")
                 self.logger.info("- Successful Trades: %d", successful_trades)
                 self.logger.info("- Failed Trades: %d", failed_trades)
+                for trade in results["executed_trades"]:
+                    if trade["status"] == "failed":
+                        self.logger.info(
+                            "- Failed: %s %s %s — %s",
+                            trade["action"],
+                            trade["quantity"],
+                            trade["symbol"],
+                            trade_result_detail(trade),
+                        )
 
             self.logger.info("=" * 80)
             self.logger.info("Trading cycle completed")
