@@ -8,6 +8,7 @@ AWS_REGION="us-west-2"
 ECR_REPO="998982002518.dkr.ecr.us-west-2.amazonaws.com/trading-agent"
 ECS_CLUSTER="trading-agent-cluster"
 ECS_SERVICE="trading-agent-service"
+TASK_FAMILY="trading-agent-task"
 LOG_GROUP="/ecs/trading-agent"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT_DIR="$( cd "$SCRIPT_DIR/../.." && pwd )"
@@ -16,15 +17,6 @@ ROOT_DIR="$( cd "$SCRIPT_DIR/../.." && pwd )"
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
-
-# Check if .env file exists
-if [ ! -f "$ROOT_DIR/.env" ]; then
-    echo -e "${RED}Error: .env file not found at $ROOT_DIR/.env${NC}"
-    exit 1
-fi
-
-# Load environment variables
-source "$ROOT_DIR/.env"
 
 echo "🚀 Starting deployment process..."
 
@@ -46,27 +38,25 @@ podman push ${ECR_REPO}:latest
 echo "📝 Setting up CloudWatch logs..."
 aws logs create-log-group --log-group-name ${LOG_GROUP} --region ${AWS_REGION} || true
 
-# Create temporary task definition with actual values
-echo "📋 Preparing task definition..."
-TEMP_TASK_DEF="/tmp/task-definition-$(date +%s).json"
-cat "${SCRIPT_DIR}/task-definition.json" | \
-    sed "s/{{OPENAI_API_KEY}}/${OPENAI_API_KEY}/g" | \
-    sed "s/{{GOOGLE_API_KEY}}/${GOOGLE_API_KEY}/g" | \
-    sed "s/{{ANTHROPIC_API_KEY}}/${ANTHROPIC_API_KEY}/g" | \
-    sed "s/{{ALPACA_API_KEY}}/${ALPACA_API_KEY}/g" | \
-    sed "s/{{ALPACA_SECRET_KEY}}/${ALPACA_SECRET_KEY}/g" > "${TEMP_TASK_DEF}"
-
-# Register task definition
+# Register task definition (secrets come from SSM; see setup-ssm-secrets.sh)
 echo "📋 Registering task definition..."
-aws ecs register-task-definition --cli-input-json "file://${TEMP_TASK_DEF}"
-
-# Clean up temporary file
-rm "${TEMP_TASK_DEF}"
+TASK_DEF_ARN=$(aws ecs register-task-definition \
+  --cli-input-json "file://${SCRIPT_DIR}/task-definition.json" \
+  --region ${AWS_REGION} \
+  --query 'taskDefinition.taskDefinitionArn' \
+  --output text)
 
 # Update service
 echo "🔄 Updating ECS service..."
-aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --force-new-deployment
+aws ecs update-service \
+  --cluster ${ECS_CLUSTER} \
+  --service ${ECS_SERVICE} \
+  --task-definition "${TASK_DEF_ARN}" \
+  --force-new-deployment \
+  --region ${AWS_REGION} \
+  --output text >/dev/null
 
 echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
+echo "Task definition: ${TASK_DEF_ARN}"
 echo "📊 Check the CloudWatch logs for container output:"
-echo "   https://${AWS_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_REGION}#logsV2:log-groups/log-group/${LOG_GROUP}" 
+echo "   https://${AWS_REGION}.console.aws.amazon.com/cloudwatch/home?region=${AWS_REGION}#logsV2:log-groups/log-group/${LOG_GROUP}"
