@@ -83,12 +83,19 @@ trading-agent/
 ├── trading_agent/         # Core package (analysis, LLM, market data, strategies)
 ├── scheduler/             # Periodic cycle scheduler
 ├── aws/deployment/        # Docker + ECS deployment
+├── docs/                  # Project plan and agent guides
 ├── tests/                 # Unit and integration tests
 ├── run_agent.py           # MVP single-cycle entry point
 ├── trading_service.py     # Scheduled service entry point
 ├── .env.example           # Environment variable template
 └── requirements.txt       # Python dependencies
 ```
+
+## Documentation
+
+- **[Project plan](docs/PROJECT_PLAN.md)** — roadmap and phase status (Phase 1 complete)
+- **[Agent guides](docs/agents/README.md)** — for AI assistants and contributors
+- **[PR description guide](docs/agents/pr-description.md)** — how to write pull request summaries
 
 ## Usage
 
