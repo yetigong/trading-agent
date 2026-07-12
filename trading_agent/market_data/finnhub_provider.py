@@ -12,7 +12,7 @@ from .news_base import NewsDataProvider
 logger = logging.getLogger(__name__)
 
 FINNHUB_BASE_URL = "https://finnhub.io/api/v1"
-MAX_SYMBOLS = 5
+MAX_SYMBOLS = 13
 MAX_HEADLINES_PER_SYMBOL = 5
 MAX_GENERAL_HEADLINES = 10
 

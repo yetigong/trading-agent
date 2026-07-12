@@ -40,6 +40,11 @@ class TradingStrategizerAgent(ConfigurableAgent):
         if prefs:
             strategy_params = {**prefs, **strategy_params}
 
+        universe_symbols = [
+            str(s).upper()
+            for s in (ctx.get("universe_symbols") or [])
+            if s
+        ]
         context = StrategyContext(
             market_conditions=market_conditions,
             market_analysis=market_analysis,
@@ -48,6 +53,7 @@ class TradingStrategizerAgent(ConfigurableAgent):
             strategy_params=strategy_params,
             rebalance_params=rebalance_params,
             analysis_params=analysis_params,
+            universe_symbols=universe_symbols,
         )
 
         decisions = self.trading_strategy.make_decisions(context)

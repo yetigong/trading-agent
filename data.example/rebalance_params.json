@@ -1,5 +1,5 @@
 {
-  "target_allocation": "balanced",
+  "target_allocation": "growth",
   "threshold": 5,
   "sector_weights": "market_cap"
 }

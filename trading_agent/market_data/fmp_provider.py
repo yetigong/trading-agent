@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 # FMP legacy /api/v3 paths return 403 for new API keys (Aug 2025+).
 FMP_BASE_URL = "https://financialmodelingprep.com/stable"
-MAX_SYMBOLS = 5
+MAX_SYMBOLS = 13
 
 
 class FMPFundamentalsProvider(FundamentalDataProvider):

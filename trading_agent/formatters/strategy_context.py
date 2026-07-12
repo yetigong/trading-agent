@@ -6,7 +6,7 @@ from trading_agent.formatters.portfolio import format_portfolio_snapshot
 
 def format_strategy_context(context: StrategyContext) -> str:
     prefs = context.user_preferences
-    return "\n\n".join([
+    parts = [
         format_market_conditions(context.market_conditions),
         format_market_analysis(context.market_analysis),
         format_portfolio_snapshot(context.portfolio),
@@ -15,4 +15,11 @@ def format_strategy_context(context: StrategyContext) -> str:
         f"- Investment Goal: {prefs.investment_goal}",
         f"- Max Position Size: {prefs.max_position_size * 100:.0f}% of portfolio",
         f"- Investment Horizon: {prefs.investment_horizon}",
-    ])
+    ]
+    universe = [str(s).upper() for s in (context.universe_symbols or []) if s]
+    if universe:
+        parts.extend([
+            "Tradable Universe (only trade symbols from this list):",
+            ", ".join(universe),
+        ])
+    return "\n\n".join(parts)

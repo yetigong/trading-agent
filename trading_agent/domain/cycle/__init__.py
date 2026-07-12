@@ -65,6 +65,7 @@ class StrategyContext:
     strategy_params: Dict[str, Any] = field(default_factory=dict)
     rebalance_params: Dict[str, Any] = field(default_factory=dict)
     analysis_params: Dict[str, Any] = field(default_factory=dict)
+    universe_symbols: List[str] = field(default_factory=list)
 
 
 @dataclass

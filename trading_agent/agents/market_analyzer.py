@@ -117,4 +117,5 @@ class MarketAnalyzerAgent(ConfigurableAgent):
         ctx["portfolio"] = portfolio
         ctx["market_analysis"] = market_analysis
         ctx["market_summary"] = summary
+        ctx["universe_symbols"] = list(self.signal_aggregator.universe_symbols or [])
         return {"market_summary": summary}

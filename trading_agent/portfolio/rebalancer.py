@@ -18,6 +18,14 @@ class PortfolioRebalancer:
         rebalance_params = context.rebalance_params or {}
         portfolio_text = format_portfolio_snapshot(context.portfolio)
         prefs = context.user_preferences
+        target_allocation = str(rebalance_params.get("target_allocation", "balanced")).lower()
+        growth_guidance = ""
+        if target_allocation == "growth":
+            growth_guidance = (
+                "Growth allocation mode: do not force equal-sector balance. "
+                "Preserve growth/core overweights (e.g. SPY/QQQ/XLK and high-conviction "
+                "growth names) when they remain within max position size."
+            )
 
         prompt = f"""
         {portfolio_text}
@@ -31,6 +39,8 @@ class PortfolioRebalancer:
         - Target Allocation: {rebalance_params.get('target_allocation', 'balanced')}
         - Threshold: {rebalance_params.get('threshold', 5)}%
         - Sector Weights: {rebalance_params.get('sector_weights', 'market_cap')}
+
+        {growth_guidance}
 
         Provide a rebalancing plan in this format:
         1. Target Allocation

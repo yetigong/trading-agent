@@ -128,6 +128,33 @@ class TestTradeValidator(unittest.TestCase):
         self.assertEqual(result.executable[0].quantity, 3)
         self.assertEqual(result.executable[0].action, "SELL")
 
+    def test_skip_reason_uses_preference_max_position_size(self):
+        # Already at 25% of portfolio (25k of 100k) — should skip under 0.25 pref,
+        # but would not trip a hardcoded 0.1 check incorrectly for messaging path.
+        portfolio = PortfolioSnapshot(
+            account=AccountSummary(
+                portfolio_value=100000,
+                cash=75000,
+                buying_power=75000,
+                equity=100000,
+            ),
+            positions=[
+                Position(
+                    symbol="CRM",
+                    qty=250,
+                    available_qty=250,
+                    current_price=100,
+                    market_value=25000,
+                ),
+            ],
+        )
+        prefs = UserPreferences(max_position_size=0.25)
+        decisions = [TradingDecision("BUY", "CRM", 10, source="strategy")]
+        result = self.validator.validate(decisions, portfolio, prefs)
+        self.assertEqual(len(result.executable), 0)
+        self.assertEqual(len(result.skipped), 1)
+        self.assertEqual(result.skipped[0].reason, "Already at max position size")
+
 
 if __name__ == "__main__":
     unittest.main()

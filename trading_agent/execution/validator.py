@@ -44,7 +44,12 @@ class TradeValidator:
                 result = self._validate_buy(decision, portfolio, max_position_size)
 
             if result is None:
-                skipped.append(SkippedTrade(decision, self._skip_reason(decision, portfolio)))
+                skipped.append(
+                    SkippedTrade(
+                        decision,
+                        self._skip_reason(decision, portfolio, max_position_size),
+                    )
+                )
             elif isinstance(result, AdjustedTrade):
                 adjusted.append(result)
                 executable.append(result.final)
@@ -192,7 +197,12 @@ class TradeValidator:
                 return float(looked_up)
         return 0.0
 
-    def _skip_reason(self, decision: TradingDecision, portfolio: PortfolioSnapshot) -> str:
+    def _skip_reason(
+        self,
+        decision: TradingDecision,
+        portfolio: PortfolioSnapshot,
+        max_position_size: float,
+    ) -> str:
         if decision.action == "SELL":
             position = portfolio.position_for(decision.symbol)
             if not position or position.available_qty <= 0:
@@ -205,7 +215,6 @@ class TradeValidator:
             return "No price available for symbol"
         position = portfolio.position_for(decision.symbol)
         current_value = position.market_value if position else 0.0
-        max_position_size = 0.1
         # Message only — actual limit already applied in _validate_buy
         portfolio_value = portfolio.account.portfolio_value or portfolio.account.equity
         if portfolio_value and current_value >= portfolio_value * max_position_size:
