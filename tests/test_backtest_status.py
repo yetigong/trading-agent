@@ -63,7 +63,7 @@ def _write_fixture_bars(cache_dir: Path, symbols, start="2024-01-01", periods=80
 
 
 class FlakyAgent:
-    """Stand-in TradingAgent that fails after the first successful cycle."""
+    """Stand-in BacktestAgentRun that fails after the first successful cycle."""
 
     def __init__(self, *args, **kwargs):
         self.calls = 0
@@ -113,7 +113,7 @@ class TestBacktestEngineStatus(unittest.TestCase):
             )
 
             with patch(
-                "trading_agent.backtest.engine.TradingAgent",
+                "trading_agent.backtest.engine.BacktestAgentRun",
                 FlakyAgent,
             ):
                 engine = BacktestEngine(

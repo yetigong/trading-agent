@@ -39,6 +39,8 @@ See **[account-history.md](account-history.md)** for CLI usage and module layout
 flowchart TB
     subgraph ta [trading_agent]
         TC[TradingCycle]
+        Live[LiveAgentRun]
+        BTRun[BacktestAgentRun]
         TA[TradingAgent]
         BT[backtest]
         Cfg[owns configs]
@@ -52,11 +54,11 @@ flowchart TB
         Retro[retrospection]
     end
 
-    TC --> TA --> AG
-    BT --> TA
+    TC --> Live --> TA --> AG
+    BT --> BTRun --> TA
     Cfg -->|"read"| TA
     MD --> TA
-    Retro -.->|"live signal only"| TC
+    Retro -.->|"live signal only"| Live
     Sweep -.->|"calls"| BT
     Sweep --> KB
     KB -.->|"soft context"| AG
@@ -82,7 +84,7 @@ trading-agent/
 │   │   ├── cycle/            # StrategyContext, MarketAnalysis, CycleResult
 │   │   └── user/             # UserPreferences, SignalConfig, Watchlist
 │   ├── storage/              # JsonFileStore + per-domain stores (→ data/*.json)
-│   ├── orchestrator/         # TradingAgent facade, TradingCycle, AccountHistoryMode
+│   ├── orchestrator/         # TradingAgent, Live/BacktestAgentRun, TradingCycle, AccountHistoryMode
 │   ├── agents/               # Phase 4 multi-agent coordinator + specialized agents
 │   ├── scheduler/            # TradingScheduler for trading_service.py
 │   ├── account/              # AccountHistoryFetcher, query resolver, aggregation
@@ -152,7 +154,7 @@ trading-agent/
 | New data/signal source | `trading_agent/market_data/` + `SignalAggregator`; see [market-signals.md](market-signals.md) |
 | Pre-trade rules | `trading_agent/execution/validator.py` |
 | Trade consolidation | `trading_agent/execution/consolidator.py` |
-| Cycle orchestration | `trading_agent/orchestrator/agent.py` |
+| Cycle orchestration | `trading_agent/orchestrator/agent.py`, `agent_run.py` |
 | Account history mode | `trading_agent/orchestrator/account_history.py`, `run_account_history.py` |
 | Backtesting | `trading_agent/backtest/`, `run_backtest.py`; see [backtesting.md](backtesting.md) |
 | Strategy learning | `strategy_learning/` scaffold; see [learning-loop.md](learning-loop.md) |

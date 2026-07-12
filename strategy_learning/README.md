@@ -40,7 +40,7 @@ Until those sub-phases land, KB / feedback / promotion still live under `trading
 | Sub-phase | What lands here |
 |-----------|-----------------|
 | 4.5.1 | This scaffold + docs |
-| 4.5.2 | (in `trading_agent`) Live vs Backtest agent-run modes |
+| 4.5.2 | **Done** (in `trading_agent`) — `LiveAgentRun` / `BacktestAgentRun` |
 | 4.5.3 | KB + recommendation writes |
 | 4.5.4 | Sweep runner |
 | 4.5.5 | Retrospection → sweep |

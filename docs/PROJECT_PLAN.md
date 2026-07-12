@@ -15,7 +15,7 @@ Two top-level packages share the repo:
 
 Persistence, management UX, and multi-tenant support follow in later phases. Phase **11** decouples `strategy_learning` into its own deploy/schedule.
 
-### Current architecture (Phase 4.5.1 — live + backtest + learning scaffold)
+### Current architecture (Phase 4.5.2 — live/backtest runs + learning scaffold)
 
 ```mermaid
 flowchart TB
@@ -27,7 +27,9 @@ flowchart TB
     end
 
     subgraph ta [trading_agent]
-        TC[TradingCycle live]
+        TC[TradingCycle]
+        Live[LiveAgentRun]
+        BTRun[BacktestAgentRun]
         TA[TradingAgent cycle engine]
         AHM[AccountHistoryMode]
         AG[agents coordinator]
@@ -42,15 +44,15 @@ flowchart TB
         SLR[retrospection placeholder]
     end
 
-    RA --> TC --> TA --> AG
+    RA --> TC --> Live --> TA --> AG
     TS --> TC
     RAH --> AHM
-    RBT --> BT --> TA
+    RBT --> BT --> BTRun --> TA
     Cfg -->|"runtime read"| TA
     MD --> TA
     SLK -.->|"KB ownership 4.5.3+"| AG
     SLS -.->|"calls backtest 4.5.4+"| BT
-    SLR -.->|"live signal only 4.5.5+"| TC
+    SLR -.->|"live signal only 4.5.5+"| Live
 ```
 
 **Update this diagram** when changing the trading or learning pipeline (see `docs/agents/development.md`).
@@ -322,7 +324,7 @@ Phase 4 delivered the **structural** loop (logger → learner → file KB → an
 
 **Doc:** [`docs/agents/learning-loop.md`](agents/learning-loop.md) · Package scaffold: [`strategy_learning/`](../strategy_learning/)
 
-### Delivered (A + B + 4.5.1)
+### Delivered (A + B + 4.5.1 + 4.5.2)
 
 - Backtest disables `LearnerAgent` (no per-cycle KB pollution)
 - Analysis/strategy prompts include lessons, signal weights, `recent_trade_bias`
@@ -331,6 +333,7 @@ Phase 4 delivered the **structural** loop (logger → learner → file KB → an
 - Review CLI (`scripts/review_config_recommendation.py`) and lineage (`scripts/kb_lineage.py`)
 - Learner patches `lessons_update` onto cycle artifacts; backtest summaries include `cycle_id`
 - `strategy_learning/` **scaffold** + architecture/docs aligned to package and data boundaries (no runtime move yet)
+- `LiveAgentRun` / `BacktestAgentRun` wrappers; circular-trigger guard; deploy = live only
 
 
 
@@ -340,7 +343,7 @@ Phase 4 delivered the **structural** loop (logger → learner → file KB → an
 | Sub-phase                         | Status   | Summary                                                                                             |
 | --------------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
 | **4.5.1** — Structure + docs      | **Done** | `strategy_learning/` scaffold; diagrams and agent docs; no behavior change                          |
-| **4.5.2** — Live vs Backtest runs | Planned  | `LiveAgentRun` / `BacktestAgentRun`; retrospection only on live; deploy = live only                 |
+| **4.5.2** — Live vs Backtest runs | **Done** | `LiveAgentRun` / `BacktestAgentRun`; retrospection only on live; deploy = live only                 |
 | **4.5.3** — Data boundary         | Planned  | KB + rec writes in `strategy_learning`; configs stay trading_agent-owned; apply not in learning pkg |
 | **4.5.4** — Param sweep           | Planned  | Parallel N backtests → `SweepResult`; **sole** recommendation producer                              |
 | **4.5.5** — Live retrospection    | Planned  | Live underperf → out-of-band sweep; mark 4.5 complete                                               |
@@ -493,7 +496,7 @@ Depends on Phase 4.5.5. Out of scope until the learning loop is complete inside 
 3. ~~Phase 1 follow-ups~~ — pre-trade validation, dedupe ✓
 4. ~~Phase 3~~ — backtesting ✓
 5. ~~**Phase 4** — multi-agent architecture~~ ✓
-6. **Phase 4.5** — learning loop (~~4.5.1~~ ✓ → 4.5.2 Live/Backtest runs → 4.5.3 data boundary → 4.5.4 sweep → 4.5.5 retrospection)
+6. **Phase 4.5** — learning loop (~~4.5.1~~ ✓ → ~~4.5.2~~ ✓ → 4.5.3 data boundary → 4.5.4 sweep → 4.5.5 retrospection)
 7. ~~**Phase 5** — multi-broker~~ ✓
 8. **Phase 6** — data persistence (before UX and multi-user)
 9. **Phase 7** — manageability UX
@@ -516,6 +519,7 @@ Depends on Phase 4.5.5. Out of scope until the learning loop is complete inside 
 | Backtest entry               | `run_backtest.py`                                                                           |
 | Scheduled service            | `trading_service.py` → `trading_agent/scheduler/`                                           |
 | Cycle wrapper                | `trading_agent/orchestrator/trading_cycle.py`                                               |
+| Live / backtest run modes    | `trading_agent/orchestrator/agent_run.py` (`LiveAgentRun`, `BacktestAgentRun`)              |
 | Account history mode         | `trading_agent/orchestrator/account_history.py`                                             |
 | Account history fetcher      | `trading_agent/account/`                                                                    |
 | Core orchestrator            | `trading_agent/orchestrator/agent.py` (`TradingAgent` facade)                               |

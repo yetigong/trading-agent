@@ -1,6 +1,6 @@
 # Multi-agent architecture (Phase 4)
 
-Specialized agents collaborate on each trading cycle. `TradingAgent` remains the public facade (used by live `TradingCycle` and backtests) and delegates to `CycleCoordinator`. Phase 4.5.2 will split explicit `LiveAgentRun` / `BacktestAgentRun` wrappers around this shared cycle engine.
+Specialized agents collaborate on each trading cycle. `TradingAgent` remains the shared cycle-engine facade. Phase 4.5.2 wraps it with explicit `LiveAgentRun` / `BacktestAgentRun` modes (`trading_agent/orchestrator/agent_run.py`): live enables the learner and may emit retrospection signals; backtest disables the learner and rejects retrospection.
 
 ## Pipeline
 
@@ -52,8 +52,8 @@ Template: [`data.example/knowledge_base.json`](../../data.example/knowledge_base
 
 ## Artifacts
 
-- Live cycles via `TradingCycle` set `write_artifact=True` so Decision Logger writes `logs/cycle_*.json`.
-- Backtests keep `write_artifact=False` (default) to avoid flooding `logs/`.
+- Live cycles via `TradingCycle` → `LiveAgentRun` default `write_artifact=True` so Decision Logger writes `logs/cycle_*.json`.
+- Backtests use `BacktestAgentRun` with `write_artifact=False` (default) to avoid flooding `logs/`.
 - `run_agent.py` uses the logger path when present; otherwise falls back to `save_cycle_artifact`.
 
 ## Extending
