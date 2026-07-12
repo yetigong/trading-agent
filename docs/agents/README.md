@@ -18,6 +18,6 @@ Also see **[../PROJECT_PLAN.md](../PROJECT_PLAN.md)** for roadmap and phase stat
 - **Minimize scope** — one concern per change; avoid drive-by refactors
 - **Match conventions** — read surrounding code before adding abstractions
 - **Paper trading default** — `ALPACA_PAPER=true`; never commit `.env` or secrets
-- **Test with mocks** — use `LLM_PROVIDER=mock` and `mock_alpaca_client` in tests; CI has no API keys
+- **Test with mocks** — use `LLM_PROVIDER=mock` and `trading_agent.broker.mock_client` in tests; CI has no API keys
 - **No root-level test files** — put unit/mock tests in `tests/` and live API checks in `tests/integration/`
 - **Structured LLM output** — trading decisions must parse as JSON via `trading_agent/models.py`

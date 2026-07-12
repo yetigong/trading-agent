@@ -259,7 +259,7 @@ flowchart TD
 **Goal:** Abstract broker behind an interface; Alpaca is one implementation. Used by **Trade Executor**.
 
 - Introduce `BrokerClient` ABC (`get_account`, `get_positions`, `place_market_order`, …)
-- Refactor `alpaca_client.py` to implement it; keep `mock_alpaca_client.py` as test double
+- Refactor `trading_agent/broker/alpaca_client.py` to implement it; keep `mock_client.py` as test double
 - Add a second broker only when there is a concrete use case (IB, Schwab, etc.)
 - Executor agent selects broker from user/config without changing strategizer or analyzer
 
@@ -374,17 +374,17 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 |------|------|
 | Single-cycle entry | `run_agent.py` |
 | Account history entry | `run_account_history.py` |
-| Scheduled service | `trading_service.py` → `scheduler/scheduler.py` |
-| Cycle wrapper | `trading_agent/orchestrator/cycle.py` |
+| Scheduled service | `trading_service.py` → `trading_agent/scheduler/` |
+| Cycle wrapper | `trading_agent/orchestrator/trading_cycle.py` |
 | Account history mode | `trading_agent/orchestrator/account_history.py` |
 | Account history fetcher | `trading_agent/account/` |
-| Core orchestrator (today) | `trader.py` (`TradingAgent`) |
+| Core orchestrator | `trading_agent/orchestrator/agent.py` (`TradingAgent`) |
 | Config | `trading_agent/config.py` |
 | Models / parsing | `trading_agent/models.py` |
 | LLM clients | `trading_agent/llm/` |
 | Strategies | `trading_agent/strategies/` |
 | Market data | `trading_agent/market_data/` |
-| Broker | `alpaca_client.py` |
+| Broker | `trading_agent/broker/` |
 | Tests | `tests/` |
 | Agent docs | `docs/agents/` |
 | Future multi-agent package | `trading_agent/agents/` (Phase 4) |

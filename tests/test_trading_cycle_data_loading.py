@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from trading_agent.orchestrator.cycle import TradingCycle
+from trading_agent.orchestrator.trading_cycle import TradingCycle
 
 
 class TestTradingCycleDataLoading(unittest.TestCase):
@@ -64,9 +64,9 @@ class TestTradingCycleDataLoading(unittest.TestCase):
         self.assertEqual(cycle.signal_config.sector_etfs, ["XLK", "XLF"])
         self.assertEqual(cycle.watchlist.symbols, ["TSLA"])
 
-    @patch("trading_agent.orchestrator.cycle.AlpacaMarketDataProvider")
-    @patch("trading_agent.orchestrator.cycle.AlpacaTradingClient")
-    @patch("trading_agent.orchestrator.cycle.get_llm_client")
+    @patch("trading_agent.orchestrator.trading_cycle.AlpacaMarketDataProvider")
+    @patch("trading_agent.orchestrator.trading_cycle.AlpacaTradingClient")
+    @patch("trading_agent.orchestrator.trading_cycle.get_llm_client")
     def test_initialize_components_passes_preferences_and_sectors(
         self, mock_llm, mock_alpaca, mock_market
     ):

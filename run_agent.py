@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from trading_agent.orchestrator.cycle import TradingCycle
+from trading_agent.orchestrator.trading_cycle import TradingCycle
 from trading_agent.config import config_summary, get_config, validate_config
 from trading_agent.models import serialize_for_json, trade_result_detail
 

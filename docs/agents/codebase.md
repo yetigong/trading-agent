@@ -30,6 +30,10 @@ See **[account-history.md](account-history.md)** for CLI usage and module layout
 
 ```mermaid
 flowchart TB
+    subgraph broker [trading_agent/broker]
+        AC[AlpacaTradingClient]
+    end
+
     subgraph orchestrator [trading_agent/orchestrator]
         TC[TradingCycle]
         TA[TradingAgent]
@@ -61,6 +65,8 @@ flowchart TB
     TA --> AR --> MA
     TA --> SC
     TA --> PRE --> EXT
+    TA --> AC
+    AHM --> AC
 ```
 
 **Keep this diagram in sync** with `docs/PROJECT_PLAN.md` when changing the pipeline.
@@ -73,9 +79,8 @@ trading-agent/
 ├── run_agent.py
 ├── run_account_history.py  # read-only account snapshot + equity history
 ├── trading_service.py
-├── trader.py                 # backward-compat re-export → orchestrator.agent
-├── alpaca_client.py
 ├── trading_agent/
+│   ├── broker/               # Alpaca trading client + mock (orders, account, history)
 │   ├── domain/               # Typed pipeline models
 │   │   ├── signals/          # MarketConditions, MarketSignals
 │   │   ├── portfolio/        # PortfolioSnapshot, Position, OpenOrder
@@ -84,6 +89,7 @@ trading-agent/
 │   │   └── user/             # UserPreferences, SignalConfig, Watchlist
 │   ├── storage/              # JsonFileStore + per-domain stores (→ data/*.json)
 │   ├── orchestrator/         # TradingAgent, TradingCycle, AccountHistoryMode
+│   ├── scheduler/            # TradingScheduler for trading_service.py
 │   ├── account/              # AccountHistoryFetcher, query resolver, aggregation
 │   ├── execution/            # SnapshotBuilder, Consolidator, Validator, Preparer, Executor
 │   ├── analysis/             # AnalysisRunner + general/technical/fundamental
@@ -94,7 +100,6 @@ trading-agent/
 │   ├── formatters/           # Domain → LLM prompt text
 │   ├── models.py             # JSON parsing helpers
 │   └── llm/
-├── scheduler/
 ├── tests/
 └── docs/
 ```
@@ -129,7 +134,9 @@ trading-agent/
 | `AnalysisRunner` | `trading_agent/analysis/runner.py` | runs all three per cycle |
 | `TradingStrategy` | `trading_agent/strategies/base.py` | general |
 | `TradePreparer` | `trading_agent/execution/preparer.py` | consolidate + validate |
-| `AlpacaTradingClient` | `alpaca_client.py` | live; `get_portfolio_history()`; `mock_alpaca_client.py` for tests |
+| `BrokerClient` | `trading_agent/broker/base.py` | Protocol for broker surface |
+| `AlpacaTradingClient` | `trading_agent/broker/alpaca_client.py` | live; `get_portfolio_history()` |
+| `MockAlpacaTradingClient` | `trading_agent/broker/mock_client.py` | test double |
 | `AccountHistoryFetcher` | `trading_agent/account/history_fetcher.py` | snapshot + equity history from broker |
 
 ## Extension points

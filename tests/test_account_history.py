@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 
-from mock_alpaca_client import MockAlpacaTradingClient
+from trading_agent.broker.mock_client import MockAlpacaTradingClient
 from trading_agent.account.aggregation import aggregate_history
 from trading_agent.account.history_fetcher import AccountHistoryFetcher
 from trading_agent.account.query_resolver import resolve_history_request

@@ -4,7 +4,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from alpaca_client import AlpacaTradingClient
+from trading_agent.broker.alpaca_client import AlpacaTradingClient
 from trading_agent.config import config_summary, get_config
 from trading_agent.llm.client import get_llm_client
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider

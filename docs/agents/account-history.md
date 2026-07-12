@@ -85,7 +85,7 @@ Artifacts are written to `logs/account_history_<timestamp>.json`.
 | `trading_agent/account/query_resolver.py` | Normalizes CLI params (`1Y` → `1A`, `1M` → group-by month) |
 | `trading_agent/account/aggregation.py` | Monthly rollup from daily points |
 | `trading_agent/orchestrator/account_history.py` | Read-only orchestrator |
-| `alpaca_client.py` | `get_portfolio_history()` wrapper |
+| `trading_agent/broker/alpaca_client.py` | `get_portfolio_history()` wrapper |
 | `tests/test_account_history.py` | Unit tests (mock Alpaca) |
 
 ## Safe places to change behavior

@@ -4,7 +4,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from alpaca_client import AlpacaTradingClient
+from trading_agent.broker.alpaca_client import AlpacaTradingClient
 from trading_agent.account.history_fetcher import AccountHistoryFetcher
 from trading_agent.config import config_summary, get_config, validate_alpaca_config
 from trading_agent.domain.account.account_history import AccountHistoryQuery

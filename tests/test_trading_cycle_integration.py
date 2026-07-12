@@ -1,6 +1,6 @@
 import unittest
 
-from mock_alpaca_client import MockAlpacaTradingClient
+from trading_agent.broker.mock_client import MockAlpacaTradingClient
 from trading_agent.orchestrator.agent import TradingAgent
 from trading_agent.llm.mock_client import MockLLMClient
 from trading_agent.market_data.mock_provider import MockMarketDataProvider

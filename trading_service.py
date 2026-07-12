@@ -1,6 +1,6 @@
 import logging
-from scheduler.scheduler import TradingScheduler
-from trading_agent.orchestrator.cycle import TradingCycle
+from trading_agent.scheduler.scheduler import TradingScheduler
+from trading_agent.orchestrator.trading_cycle import TradingCycle
 from trading_agent.config import get_config
 
 def setup_logging(log_level: str = "INFO"):

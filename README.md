@@ -96,6 +96,8 @@ trading-agent/
 ├── trading_agent/
 │   ├── domain/             # Typed pipeline models (portfolio, account, cycle, …)
 │   ├── orchestrator/       # TradingAgent, TradingCycle, AccountHistoryMode
+│   ├── broker/             # Alpaca trading client + mock
+│   ├── scheduler/          # TradingScheduler for trading_service.py
 │   ├── account/            # Account history fetcher, query resolver, aggregation
 │   ├── execution/          # Trade preparation + broker submit
 │   ├── analysis/           # AnalysisRunner (all 3 strategies)
@@ -103,7 +105,6 @@ trading-agent/
 │   ├── market_data/        # Alpaca, Finnhub, FMP providers
 │   ├── signals/            # SignalAggregator, RSI/MACD indicators
 │   └── formatters/         # Domain → LLM prompts
-├── scheduler/              # Periodic cycle scheduler
 ├── aws/deployment/         # Docker + ECS deployment
 ├── docs/                   # Project plan and agent guides
 ├── tests/
@@ -129,7 +130,7 @@ The project provides a `TradingAgent` class that handles the entire trading cycl
 from trading_agent.orchestrator.agent import TradingAgent
 from trading_agent.llm.client import get_llm_client
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
-from alpaca_client import AlpacaTradingClient
+from trading_agent.broker.alpaca_client import AlpacaTradingClient
 
 # Initialize components
 llm_client = get_llm_client("claude", model="financial")
