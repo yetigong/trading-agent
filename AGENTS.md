@@ -43,3 +43,13 @@ Every PR (except explicitly doc-only) must:
 - **Prefer mocks** — use `MockLLMClient` and `MockAlpacaTradingClient` for CI-safe coverage
 
 See [development guide](docs/agents/development.md) and [PR descriptions](docs/agents/pr-description.md) for setup and the full PR test checklist.
+
+## Cursor Cloud specific instructions
+
+This is a Python 3.9+ CLI project (no web UI). The startup update script already creates `.venv/` and installs `requirements.txt`, so dependencies are ready when a session starts.
+
+- **Run tests with `bash scripts/run_tests.sh`** (or `.venv/bin/python -m unittest discover tests -v`). The `.venv/bin/bash …` form documented elsewhere does not work — the venv has no `bash` binary. The suite is fully mock-based and needs no API keys.
+- **Runtime config**: entry points read `data/*.json`; if missing, the stores auto-seed from `data.example/` on first load, so no manual copy is needed.
+- **Live entry points require external secrets + network**: `run_agent.py`, `trading_service.py`, `run_account_history.py`, and `run_backtest.py` need real Alpaca (`ALPACA_API_KEY`/`ALPACA_SECRET_KEY`) and (except account history) an LLM key. They cannot run in cloud without those secrets.
+- **To exercise the pipeline end-to-end without keys**, construct `TradingAgent` with the mock providers (`MockLLMClient`, `MockAlpacaTradingClient`, `MockMarketDataProvider`, `MockNewsProvider`, `MockFundamentalsProvider`) and call `run_trading_cycle(...)`; `MockLLMClient` emits a BUY AAPL decision that flows through analysis → preparation → execution.
+- **Running scripts directly** (not via the entry-point files at repo root) needs `PYTHONPATH=/workspace`; `scripts/run_tests.sh` sets this itself.
