@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from datetime import date, datetime
 from pathlib import Path
@@ -12,7 +13,14 @@ from trading_agent.backtest.benchmarks import _equity_curve_buy_and_hold, run_be
 from trading_agent.backtest.broker import BacktestBroker
 from trading_agent.backtest.metrics import compute_metrics
 from trading_agent.backtest.models import BacktestConfig, BacktestRun
-from trading_agent.llm.client import get_llm_client
+from trading_agent.backtest.status import (
+    equity_deployment,
+    last_trade_date,
+    resolve_run_status,
+    summarize_cycles,
+)
+from trading_agent.llm.client import build_llm_client
+from trading_agent.llm.failover_client import FailoverLLMClient
 from trading_agent.market_data.alpaca_historical import (
     DEFAULT_INDICES,
     HistoricalAlpacaProvider,
@@ -154,24 +162,29 @@ class BacktestEngine:
             )
             broker.set_as_of_date(trading_days[0])
 
-            llm = self.llm_client
+            llm: Optional[Any] = self.llm_client
             if llm is None and not config.skip_llm:
-                llm = get_llm_client(
-                    config.llm_provider or "mock",
+                llm = build_llm_client(
+                    provider=config.llm_provider,
                     model=config.llm_model,
+                    fallback_provider=config.llm_fallback_provider,
+                    fallback_model=config.llm_fallback_model,
+                    max_retries=config.llm_max_retries,
                 )
 
             agent = None
             if not config.skip_llm:
+                max_position_size = float(prefs.get("max_position_size", 0.25))
                 agent = TradingAgent(
                     risk_tolerance=prefs.get("risk_tolerance", "moderate"),
                     investment_goal=prefs.get("investment_goal", "growth"),
-                    max_position_size=float(prefs.get("max_position_size", 0.1)),
+                    max_position_size=max_position_size,
                     llm_client=llm,
                     market_data_provider=market,
                     news_provider=news,
                     fundamentals_provider=MockFundamentalsProvider(metrics={}),
                     alpaca_client=broker,
+                    universe_symbols=symbols,
                 )
 
             equity_curve: List[Dict[str, Any]] = []
@@ -189,6 +202,9 @@ class BacktestEngine:
                         strategy_params=config.strategy_params,
                         rebalance_params=config.rebalance_params,
                     )
+                    llm_meta: Dict[str, Any] = {}
+                    if isinstance(llm, FailoverLLMClient):
+                        llm_meta = llm.stats()
                     cycle_summaries.append({
                         "date": day.isoformat(),
                         "status": cycle_result.get("status"),
@@ -196,6 +212,7 @@ class BacktestEngine:
                         "decisions": cycle_result.get("decisions") or [],
                         "executed_trades": cycle_result.get("executed_trades") or [],
                         "error": cycle_result.get("error"),
+                        "llm": llm_meta,
                     })
                     for trade in cycle_result.get("executed_trades") or []:
                         if trade.get("status") != "executed":
@@ -206,8 +223,10 @@ class BacktestEngine:
                             "side": trade.get("action"),
                             "qty": trade.get("quantity"),
                             "price": market.get_close_price(str(trade.get("symbol") or "")) or 0.0,
-                            "reasoning": "",
+                            "reasoning": trade.get("reasoning") or "",
                         })
+                    if config.llm_pause_seconds > 0:
+                        time.sleep(config.llm_pause_seconds)
 
                 equity_curve.append({
                     "date": day.isoformat(),
@@ -242,17 +261,31 @@ class BacktestEngine:
                 trade_count=len(trade_log),
             )
 
+            cycle_stats = summarize_cycles(cycle_summaries)
+            status, status_detail = resolve_run_status(cycle_summaries)
+            deployment = equity_deployment(equity_curve)
+            if status_detail:
+                notes.append(status_detail)
+            if isinstance(llm, FailoverLLMClient):
+                notes.append(f"LLM failover stats: {llm.stats()}")
+
+            run_config = config.to_dict()
+            run_config["cycle_stats"] = cycle_stats
+            run_config["deployment"] = deployment
+            run_config["last_trade_date"] = last_trade_date(trade_log)
+
             return BacktestRun(
                 run_id=run_id,
                 timestamp=timestamp,
-                config=config.to_dict(),
-                status="success",
+                config=run_config,
+                status=status,
                 equity_curve=equity_curve,
                 trade_log=trade_log,
                 cycle_summaries=cycle_summaries,
                 metrics=strategy_metrics.to_dict(),
                 benchmarks=[b.to_dict() for b in benchmarks],
                 notes=notes,
+                error=status_detail if status == "failed" else None,
             )
 
         except Exception as exc:

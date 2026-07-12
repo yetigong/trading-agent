@@ -34,17 +34,25 @@ class SignalAggregator:
         market_data_provider: MarketDataProvider,
         news_provider: Optional[NewsDataProvider] = None,
         fundamentals_provider: Optional[FundamentalDataProvider] = None,
+        universe_symbols: Optional[List[str]] = None,
     ):
         self.market_data_provider = market_data_provider
         self.news_provider = news_provider or FinnhubNewsProvider()
         self.fundamentals_provider = fundamentals_provider or FMPFundamentalsProvider()
+        self.universe_symbols = [s.upper() for s in (universe_symbols or [])]
 
     def collect(
         self,
         market_conditions: MarketConditions,
         portfolio: Optional[PortfolioSnapshot] = None,
+        universe_symbols: Optional[List[str]] = None,
     ) -> MarketSignals:
-        ctx = SignalCollectionContext.from_inputs(market_conditions, portfolio)
+        universe = universe_symbols if universe_symbols is not None else self.universe_symbols
+        ctx = SignalCollectionContext.from_inputs(
+            market_conditions,
+            portfolio,
+            universe_symbols=universe,
+        )
         technical_indicators = self._collect_technical_indicators(ctx)
         sector_summary = summarize_sector_rotation(market_conditions.sector_etfs)
 

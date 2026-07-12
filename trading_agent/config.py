@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
 
@@ -19,6 +19,9 @@ LLM_API_KEY_ENV = {
 class AppConfig:
     llm_provider: str
     llm_model: str
+    llm_fallback_provider: Optional[str]
+    llm_fallback_model: str
+    llm_max_retries: int
     trading_cycle_interval: int
     alpaca_api_key: str
     alpaca_secret_key: str
@@ -26,10 +29,22 @@ class AppConfig:
     log_level: str
 
 
+def _normalize_fallback(raw: Optional[str]) -> Optional[str]:
+    value = (raw or "").strip().lower()
+    if not value or value in ("none", "off", "disabled"):
+        return None
+    return value
+
+
 def get_config() -> AppConfig:
     return AppConfig(
-        llm_provider=os.getenv("LLM_PROVIDER", "gemini").lower(),
+        llm_provider=os.getenv("LLM_PROVIDER", "openai").lower(),
         llm_model=os.getenv("LLM_MODEL", "financial"),
+        llm_fallback_provider=_normalize_fallback(
+            os.getenv("LLM_FALLBACK_PROVIDER", "gemini")
+        ),
+        llm_fallback_model=os.getenv("LLM_FALLBACK_MODEL", "financial"),
+        llm_max_retries=int(os.getenv("LLM_MAX_RETRIES", "3")),
         trading_cycle_interval=int(os.getenv("TRADING_CYCLE_INTERVAL", "30")),
         alpaca_api_key=os.getenv("ALPACA_API_KEY", ""),
         alpaca_secret_key=os.getenv("ALPACA_SECRET_KEY", ""),
@@ -55,25 +70,30 @@ def validate_alpaca_config(config: AppConfig) -> None:
         )
 
 
+def _require_provider_key(provider: str, missing: List[str]) -> None:
+    if provider not in LLM_API_KEY_ENV:
+        raise ValueError(
+            f"Unsupported LLM provider '{provider}'. "
+            f"Supported: {', '.join(k for k in LLM_API_KEY_ENV if k != 'mock')}, mock"
+        )
+    api_key_env = LLM_API_KEY_ENV[provider]
+    if api_key_env and not os.getenv(api_key_env):
+        missing.append(api_key_env)
+
+
 def validate_config(config: AppConfig) -> None:
     """Validate required environment variables for a live paper-trading cycle."""
     validate_alpaca_config(config)
     missing: List[str] = []
 
-    if config.llm_provider not in LLM_API_KEY_ENV:
-        raise ValueError(
-            f"Unsupported LLM_PROVIDER '{config.llm_provider}'. "
-            f"Supported: {', '.join(k for k in LLM_API_KEY_ENV if k != 'mock')}, mock"
-        )
-
-    api_key_env = LLM_API_KEY_ENV[config.llm_provider]
-    if api_key_env and not os.getenv(api_key_env):
-        missing.append(api_key_env)
+    _require_provider_key(config.llm_provider, missing)
+    if config.llm_fallback_provider:
+        _require_provider_key(config.llm_fallback_provider, missing)
 
     if missing:
         raise ValueError(
             "Missing required environment variables: "
-            + ", ".join(missing)
+            + ", ".join(sorted(set(missing)))
             + ". Copy .env.example and fill in your credentials."
         )
 
@@ -82,6 +102,9 @@ def config_summary(config: AppConfig) -> Dict[str, object]:
     return {
         "llm_provider": config.llm_provider,
         "llm_model": config.llm_model,
+        "llm_fallback_provider": config.llm_fallback_provider,
+        "llm_fallback_model": config.llm_fallback_model,
+        "llm_max_retries": config.llm_max_retries,
         "alpaca_paper": config.alpaca_paper,
         "trading_cycle_interval": config.trading_cycle_interval,
     }

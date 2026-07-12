@@ -6,7 +6,7 @@ from typing import Any, Dict
 class UserPreferences:
     risk_tolerance: str = "moderate"
     investment_goal: str = "growth"
-    max_position_size: float = 0.1
+    max_position_size: float = 0.25
     investment_horizon: str = "medium-term"
 
     @classmethod
@@ -14,7 +14,7 @@ class UserPreferences:
         return cls(
             risk_tolerance=data.get("risk_tolerance", "moderate"),
             investment_goal=data.get("investment_goal", "growth"),
-            max_position_size=float(data.get("max_position_size", 0.1)),
+            max_position_size=float(data.get("max_position_size", 0.25)),
             investment_horizon=data.get("investment_horizon", "medium-term"),
         )
 

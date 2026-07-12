@@ -30,6 +30,9 @@ class GeneralTradingStrategy(TradingStrategy):
 
         Synthesize general, technical, and fundamental analysis above with portfolio
         constraints to produce realistic, executable trades.
+        Prefer staying invested when growth is the goal: avoid large idle cash
+        unless risk management clearly requires it. Prefer fewer fillable orders
+        within buying power and max position size over oversized tickets.
 
         {TRADING_DECISIONS_JSON_PROMPT}
         """

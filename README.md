@@ -33,9 +33,11 @@ Required variables for the MVP paper-trading demo:
 ALPACA_API_KEY=your_api_key_here
 ALPACA_SECRET_KEY=your_secret_key_here
 ALPACA_PAPER=true
-GOOGLE_API_KEY=your_google_api_key_here   # if LLM_PROVIDER=gemini (default)
-LLM_PROVIDER=gemini
+OPENAI_API_KEY=your_openai_api_key_here   # primary (default)
+GOOGLE_API_KEY=your_google_api_key_here   # Gemini failover (default)
+LLM_PROVIDER=openai
 LLM_MODEL=financial
+LLM_FALLBACK_PROVIDER=gemini
 ```
 
 3. Replace the API keys with your actual credentials.
@@ -76,10 +78,13 @@ Saves `logs/account_history_<timestamp>.json` and prints equity, cash, margin de
 Replay the trading agent on historical data and compare against SPY/QQQ and other benchmarks:
 
 ```bash
-.venv/bin/python run_backtest.py --start 2024-01-01 --end 2024-06-30 --run-label baseline
+.venv/bin/python run_backtest.py \
+  --start 2024-01-01 --end 2024-06-30 \
+  --symbols SPY,QQQ,XLK,XLV,XLE,XLI,XLY,IWM \
+  --run-label baseline
 ```
 
-Uses your current `data/*.json` configuration. See **[Backtesting guide](docs/agents/backtesting.md)**.
+Uses your current `data/*.json` configuration. Prefer OpenAI primary + Gemini fallback (see `.env.example`). Require ≥80% cycle success before comparing to benchmarks. See **[Backtesting guide](docs/agents/backtesting.md)**.
 
 For the scheduled service (runs every `TRADING_CYCLE_INTERVAL` minutes, default 30):
 

@@ -7,6 +7,7 @@ from trading_agent.domain.portfolio.portfolio_snapshot import (
     PortfolioSnapshot,
     Position,
 )
+from trading_agent.domain.user.user_preferences import UserPreferences
 from trading_agent.execution.consolidator import TradeConsolidator
 from trading_agent.execution.validator import TradeValidator
 
@@ -51,23 +52,24 @@ class TestTradeValidator(unittest.TestCase):
             ],
         )
         self.validator = TradeValidator()
+        self.prefs_10pct = UserPreferences(max_position_size=0.1)
 
     def test_clip_sell_to_available(self):
         decisions = [TradingDecision("SELL", "CRM", 150, source="strategy")]
-        result = self.validator.validate(decisions, self.portfolio)
+        result = self.validator.validate(decisions, self.portfolio, self.prefs_10pct)
         self.assertEqual(len(result.executable), 1)
         self.assertEqual(result.executable[0].quantity, 3)
         self.assertEqual(len(result.adjusted), 1)
 
     def test_skip_sell_with_no_position(self):
         decisions = [TradingDecision("SELL", "SMCI", "ALL", source="strategy")]
-        result = self.validator.validate(decisions, self.portfolio)
+        result = self.validator.validate(decisions, self.portfolio, self.prefs_10pct)
         self.assertEqual(len(result.executable), 0)
         self.assertEqual(len(result.skipped), 1)
 
     def test_clip_buy_to_buying_power(self):
         decisions = [TradingDecision("BUY", "CRM", 1000, source="strategy")]
-        result = self.validator.validate(decisions, self.portfolio)
+        result = self.validator.validate(decisions, self.portfolio, self.prefs_10pct)
         self.assertEqual(len(result.executable), 1)
         # 97 = min(1000 requested, 500 affordable, 97 max position size headroom for existing CRM)
         self.assertEqual(result.executable[0].quantity, 97)
@@ -75,12 +77,28 @@ class TestTradeValidator(unittest.TestCase):
 
     def test_sells_before_buys(self):
         decisions = [
-            TradingDecision("BUY", "AAPL", 1, source="strategy"),
+            TradingDecision("BUY", "CRM", 1, source="strategy"),
             TradingDecision("SELL", "AVGO", 2, source="strategy"),
         ]
-        result = self.validator.validate(decisions, self.portfolio)
+        result = self.validator.validate(decisions, self.portfolio, self.prefs_10pct)
         self.assertEqual(result.executable[0].action, "SELL")
         self.assertEqual(result.executable[1].action, "BUY")
+
+    def test_clip_new_symbol_buy_using_price_lookup(self):
+        validator = TradeValidator(price_lookup=lambda symbol: 50.0 if symbol == "XLE" else None)
+        # 10% of 100k = 10k => max 200 shares at $50; BP allows 1000
+        decisions = [TradingDecision("BUY", "XLE", 1000, source="strategy")]
+        result = validator.validate(decisions, self.portfolio, self.prefs_10pct)
+        self.assertEqual(len(result.executable), 1)
+        self.assertEqual(result.executable[0].quantity, 200)
+        self.assertEqual(len(result.adjusted), 1)
+
+    def test_skip_buy_without_price(self):
+        decisions = [TradingDecision("BUY", "XLE", 10, source="strategy")]
+        result = self.validator.validate(decisions, self.portfolio, self.prefs_10pct)
+        self.assertEqual(len(result.executable), 0)
+        self.assertEqual(len(result.skipped), 1)
+        self.assertIn("price", result.skipped[0].reason.lower())
 
     def test_skip_wash_trade_with_open_opposite_order(self):
         portfolio = PortfolioSnapshot(
@@ -91,21 +109,21 @@ class TestTradeValidator(unittest.TestCase):
             ],
         )
         decisions = [TradingDecision("BUY", "CRM", 1, source="strategy")]
-        result = self.validator.validate(decisions, portfolio)
+        result = self.validator.validate(decisions, portfolio, self.prefs_10pct)
         self.assertEqual(len(result.executable), 0)
         self.assertEqual(len(result.skipped), 1)
         self.assertIn("wash trade", result.skipped[0].reason.lower())
 
     def test_skip_buy_all(self):
         decisions = [TradingDecision("BUY", "CRM", "ALL", source="strategy")]
-        result = self.validator.validate(decisions, self.portfolio)
+        result = self.validator.validate(decisions, self.portfolio, self.prefs_10pct)
         self.assertEqual(len(result.executable), 0)
         self.assertEqual(len(result.skipped), 1)
         self.assertIn("ALL", result.skipped[0].reason)
 
     def test_resolve_sell_all_to_available(self):
         decisions = [TradingDecision("SELL", "CRM", "ALL", source="strategy")]
-        result = self.validator.validate(decisions, self.portfolio)
+        result = self.validator.validate(decisions, self.portfolio, self.prefs_10pct)
         self.assertEqual(len(result.executable), 1)
         self.assertEqual(result.executable[0].quantity, 3)
         self.assertEqual(result.executable[0].action, "SELL")
