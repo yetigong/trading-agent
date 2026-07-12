@@ -43,8 +43,15 @@ class MarketAnalysis:
         return [r for r in (self.general, self.technical, self.fundamental) if r is not None]
 
     def has_failure(self) -> bool:
+        """True when no analysis strategy produced a successful result.
+
+        Skipped strategies (e.g. empty fundamentals) do not count as success,
+        so general+technical failures still fail the cycle.
+        """
         results = self.all_results()
-        return not results or all(r.status == "failed" for r in results)
+        if not results:
+            return True
+        return not any(r.status == "success" for r in results)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "MarketAnalysis":
@@ -65,6 +72,7 @@ class StrategyContext:
     strategy_params: Dict[str, Any] = field(default_factory=dict)
     rebalance_params: Dict[str, Any] = field(default_factory=dict)
     analysis_params: Dict[str, Any] = field(default_factory=dict)
+    universe_symbols: List[str] = field(default_factory=list)
 
 
 @dataclass

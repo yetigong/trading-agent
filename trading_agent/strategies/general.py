@@ -34,6 +34,14 @@ class GeneralTradingStrategy(TradingStrategy):
         unless risk management clearly requires it. Prefer fewer fillable orders
         within buying power and max position size over oversized tickets.
 
+        Deployment rules:
+        - In risk-on / growth regimes, target >=85% invested after any trims;
+          redeploy freed cash in the same cycle (do not leave large idle cash).
+        - Prefer liquid core ETFs already in the universe (e.g. SPY/QQQ/XLK)
+          unless multi-horizon signals strongly favor rotation.
+        - Only trade symbols from the Tradable Universe list when it is present
+          in the context above.
+
         {TRADING_DECISIONS_JSON_PROMPT}
         """
 

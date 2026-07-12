@@ -41,6 +41,14 @@ class AnalysisRunner:
         results: Dict[str, AnalysisResult] = {}
         for strategy in self.strategies:
             key = self._strategy_key(strategy.get_strategy_name())
+            if key == "fundamental" and not self._has_fundamental_metrics(signals):
+                results[key] = AnalysisResult(
+                    strategy_name=strategy.get_strategy_name(),
+                    status="skipped",
+                    summary="Skipped: no fundamental metrics available",
+                    timestamp=datetime.now(),
+                )
+                continue
             try:
                 raw = strategy.analyze(
                     portfolio=portfolio,
@@ -63,6 +71,11 @@ class AnalysisRunner:
             fundamental=results.get("fundamental"),
             signals=signals,
         )
+
+    @staticmethod
+    def _has_fundamental_metrics(signals: MarketSignals) -> bool:
+        metrics = getattr(getattr(signals, "fundamentals", None), "metrics", None) or {}
+        return bool(metrics)
 
     def _strategy_key(self, strategy_name: str) -> str:
         name = strategy_name.lower()

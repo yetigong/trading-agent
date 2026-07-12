@@ -8,7 +8,7 @@ import pandas as pd
 from trading_agent.domain.portfolio.portfolio_snapshot import PortfolioSnapshot
 from trading_agent.domain.signals.market_conditions import MarketConditions
 
-MAX_SYMBOLS = 5
+MAX_SYMBOLS = 13
 BAR_LOOKBACK_DAYS = 100
 
 

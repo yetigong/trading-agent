@@ -13,13 +13,13 @@ Manual, repeatable evaluation of the live `TradingAgent` pipeline on historical 
 .venv/bin/python run_backtest.py \
   --start 2024-01-01 --end 2024-06-30 \
   --rebalance weekly \
-  --symbols SPY,QQQ,XLK,XLV,XLE,XLI,XLY,IWM \
+  --symbols SPY,QQQ,XLK,XLV,XLE,XLI,XLY,IWM,TSLA,NVDA,MSFT,PLTR,GLD \
   --run-label baseline
 
 # Optional: pause between weekly LLM cycles to reduce rate-limit pressure
 .venv/bin/python run_backtest.py \
   --start 2026-01-01 --end 2026-06-30 \
-  --symbols SPY,QQQ,XLK,XLV,XLE,XLI,XLY,IWM \
+  --symbols SPY,QQQ,XLK,XLV,XLE,XLI,XLY,IWM,TSLA,NVDA,MSFT,PLTR,GLD \
   --llm-pause-seconds 2 \
   --run-label clean-baseline
 
@@ -48,6 +48,16 @@ A run is only a valid LLM-strategy evaluation when most rebalance cycles actuall
 | `failed` | Success rate &lt; 80% (or zero successes) — do not compare to benchmarks |
 
 The CLI summary prints cycle success rate, last trade date, and end-of-run cash / invested %. Require **≥80% cycle success** before treating SPY/QQQ comparisons as meaningful.
+
+### Fair comparison to B&H SPY (invested %)
+
+Buy-and-hold SPY is ~100% invested. If `data/preferences.json` keeps `max_position_size` at **0.1**, a diversified book can sit near **~65% invested** (~35% cash) even with a healthy LLM path — that cash drag alone can trail SPY without implying a bad signal stack.
+
+For clean baselines meant to compete with fully invested SPY B&H:
+
+- Prefer `max_position_size` **≥ 0.2** (code / example default is **0.25**)
+- Check end-of-run **cash % / invested %** in the CLI summary and artifact before attributing underperformance to stock selection
+- `rebalance_params.target_allocation`: **`balanced`** pushes toward equal-sector exposure; **`growth`** preserves growth/core overweights (SPY/QQQ/XLK-style) instead of forcing sector balance
 
 ### LLM primary / secondary failover
 

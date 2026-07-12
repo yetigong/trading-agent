@@ -1,3 +1,17 @@
 {
-  "symbols": []
+  "symbols": [
+    "SPY",
+    "QQQ",
+    "XLK",
+    "XLV",
+    "XLE",
+    "XLI",
+    "XLY",
+    "IWM",
+    "TSLA",
+    "NVDA",
+    "MSFT",
+    "PLTR",
+    "GLD"
+  ]
 }
