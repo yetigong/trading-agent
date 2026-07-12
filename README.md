@@ -71,6 +71,16 @@ python run_account_history.py --period 1A --group-by month
 
 Saves `logs/account_history_<timestamp>.json` and prints equity, cash, margin debt, and monthly changes. See **[Account history guide](docs/agents/account-history.md)** for details.
 
+### Backtesting (Phase 3)
+
+Replay the trading agent on historical data and compare against SPY/QQQ and other benchmarks:
+
+```bash
+.venv/bin/python run_backtest.py --start 2024-01-01 --end 2024-06-30 --run-label baseline
+```
+
+Uses your current `data/*.json` configuration. See **[Backtesting guide](docs/agents/backtesting.md)**.
+
 For the scheduled service (runs every `TRADING_CYCLE_INTERVAL` minutes, default 30):
 
 ```bash
@@ -102,22 +112,24 @@ trading-agent/
 │   ├── execution/          # Trade preparation + broker submit
 │   ├── analysis/           # AnalysisRunner (all 3 strategies)
 │   ├── strategies/         # Trading decision strategies
-│   ├── market_data/        # Alpaca, Finnhub, FMP providers
+│   ├── market_data/        # Alpaca, Finnhub, FMP + historical caches
 │   ├── signals/            # SignalAggregator, RSI/MACD indicators
+│   ├── backtest/           # BacktestEngine, broker, benchmarks
 │   └── formatters/         # Domain → LLM prompts
 ├── aws/deployment/         # Docker + ECS deployment
 ├── docs/                   # Project plan and agent guides
 ├── tests/
-├── run_agent.py            # MVP single-cycle entry point
+├── run_agent.py            # Single trading cycle
 ├── run_account_history.py  # Account snapshot + equity history
-└── trading_service.py      # Scheduled service entry point
+├── run_backtest.py         # Historical backtest + benchmarks
+└── trading_service.py      # Scheduled trading service
 ```
 
 See **[Project plan](docs/PROJECT_PLAN.md)** for the full layered architecture diagram.
 
 ## Documentation
 
-- **[Project plan](docs/PROJECT_PLAN.md)** — roadmap and phase status (Phase 1 complete)
+- **[Project plan](docs/PROJECT_PLAN.md)** — roadmap and phase status (Phases 1–3 complete)
 - **[Agent guides](docs/agents/README.md)** — for AI assistants and contributors
 - **[Account history](docs/agents/account-history.md)** — read-only account snapshot and equity tracking
 - **[PR description guide](docs/agents/pr-description.md)** — how to write pull request summaries

@@ -57,6 +57,15 @@ class AlpacaMarketDataProvider(MarketDataProvider):
         """Get daily OHLCV bars for a symbol."""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
+        return self.get_historical_bars(symbol, start_date, end_date)
+
+    def get_historical_bars(
+        self,
+        symbol: str,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> Optional[pd.DataFrame]:
+        """Fetch daily OHLCV bars for an explicit date range."""
         return self._get_historical_data(symbol, start_date, end_date)
     
     def get_market_volatility(self) -> str:

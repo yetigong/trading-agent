@@ -6,7 +6,7 @@ Last updated: 2026-07-11
 
 An **LLM-orchestrated trading platform** that runs periodic cycles: gather market intelligence → formulate strategies → execute trades → log outcomes → learn over time. Today the codebase is a **single monolithic trading agent** (Phase 1 MVP). The roadmap evolves it into a **multi-agent system** with persistence, management UX, and multi-tenant user support.
 
-### Current architecture (Phase 1.6 — layered pipeline + account history)
+### Current architecture (Phase 3 — layered pipeline + account history + backtesting)
 
 ```mermaid
 flowchart TB
@@ -123,7 +123,7 @@ flowchart TD
 | **Phase 1.5** — Valid trades + layered architecture | **Done** | Domain models, all-analysis runner, trade preparation, enriched portfolio |
 | **Phase 1.6** — Account history mode | **Done** | Read-only snapshot + equity history; `run_account_history.py`; monthly aggregation |
 | **Phase 2** — Richer market context | **Done** | RSI/MACD, sector ETFs, Finnhub news, FMP fundamentals in prompts |
-| **Phase 3** — Backtesting | Planned | Historical replay, strategy comparison metrics |
+| **Phase 3** — Backtesting | **Done** | Historical replay via TradingAgent; benchmarks; `run_backtest.py`; per-provider cache |
 | **Phase 4** — Multi-agent architecture | Planned | Analyzer, strategizer, executor, logger, learner |
 | **Phase 5** — Multi-broker | Planned | `BrokerClient` abstraction beyond Alpaca |
 | **Phase 6** — Data persistence | Planned | DB for prefs, history, confirmations, knowledge base |
@@ -201,17 +201,36 @@ flowchart TD
 
 ---
 
-## Phase 3: Backtesting Mode
+## Phase 3: Backtesting Mode — COMPLETE
 
-**Goal:** Evaluate strategies on historical data. Required input for the **Trading Strategizer** (Phase 4) to compare trade-offs.
+**Goal:** Evaluate the user's LLM strategy on historical data against industry-standard benchmarks. Feeds the **Trading Strategizer** (Phase 4).
 
-- New package: `trading_agent/backtest/`
-  - `BacktestEngine` — replay dates, feed historical bars
-  - `BacktestBroker` — simulate fills
-  - `BacktestResult` — PnL, drawdown, Sharpe, trade log
-- Support LLM strategy (spot checks) and at least one rules-based `TradingStrategy` for fast iteration
-- **Strategy comparison API** — run multiple strategy variants; return ranked metrics for strategizer agent
-- CLI: `python -m trading_agent.backtest --strategy … --start … --end …`
+### Delivered
+
+- **Historical data (shared)** — `data/cache/alpaca/` (bars CSV + manifest), `data/cache/finnhub/` (news JSON); `HistoricalAlpacaProvider` / `HistoricalFinnhubProvider` with `as_of_date`
+- **Backtest package** — `trading_agent/backtest/` (`BacktestEngine`, `BacktestBroker`, benchmarks, metrics, comparison)
+- **Reuse live agent** — engine invokes `TradingAgent.run_trading_cycle()` with injected historical providers + simulated broker; loads user config from the same stores as `TradingCycle`
+- **Cadence** — weekly rebalance dates by default (daily optional); daily mark-to-market for equity curve
+- **Benchmarks** — SPY/QQQ B&H, 60/40 SPY/AGG, SMA(20/50), equal-weight B&H
+- **Metrics** — total return, CAGR, max drawdown, volatility, Sharpe, alpha/beta vs SPY
+- **CLI** — `run_backtest.py` (manual; `--prefetch-only`, `--override-strategy`, `--compare`)
+- **Artifacts** — `logs/backtest_<timestamp>_<label>.json` with config snapshot for repeatable tuning
+- **Tests** — `test_historical_data`, `test_backtest_broker_metrics`, `test_backtest_engine`
+- **Docs** — `docs/agents/backtesting.md`
+
+### Known limitations (v1)
+
+- FMP fundamentals are TTM (not point-in-time); backtest uses mock/empty fundamentals slice
+- Corporate actions ignored; LLM non-determinism — compare runs with model/config snapshots
+
+### Reference (original plan)
+
+| Work item | Approach |
+|-----------|----------|
+| Historical replay | Point-in-time providers + `BacktestEngine` loop |
+| Simulated fills | `BacktestBroker` at bar close |
+| Benchmarks + metrics | Passive + SMA baselines; Sharpe/drawdown/alpha |
+| Manual CLI | `run_backtest.py` (not scheduler) |
 
 ---
 
@@ -356,8 +375,8 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 
 1. ~~Phase 1 MVP~~ ✓
 2. ~~Phase 2~~ — richer market context ✓
-3. **Phase 1 follow-ups** — pre-trade validation, dedupe (small PRs alongside Phase 2)
-4. **Phase 3** — backtesting (required before strategizer can compare strategies)
+3. ~~Phase 1 follow-ups~~ — pre-trade validation, dedupe ✓
+4. ~~Phase 3~~ — backtesting ✓
 5. **Phase 4** — multi-agent architecture (core platform evolution)
 6. **Phase 5** — multi-broker (when Trade Executor needs more than Alpaca)
 7. **Phase 6** — data persistence (before UX and multi-user)
@@ -374,11 +393,14 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 |------|------|
 | Single-cycle entry | `run_agent.py` |
 | Account history entry | `run_account_history.py` |
+| Backtest entry | `run_backtest.py` |
 | Scheduled service | `trading_service.py` → `trading_agent/scheduler/` |
 | Cycle wrapper | `trading_agent/orchestrator/trading_cycle.py` |
 | Account history mode | `trading_agent/orchestrator/account_history.py` |
 | Account history fetcher | `trading_agent/account/` |
 | Core orchestrator | `trading_agent/orchestrator/agent.py` (`TradingAgent`) |
+| Backtest engine | `trading_agent/backtest/` |
+| Historical market data | `trading_agent/market_data/alpaca_historical.py`, `finnhub_historical.py` |
 | Config | `trading_agent/config.py` |
 | Models / parsing | `trading_agent/models.py` |
 | LLM clients | `trading_agent/llm/` |
