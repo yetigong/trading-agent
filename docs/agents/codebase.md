@@ -88,7 +88,8 @@ trading-agent/
 │   │   ├── cycle/            # StrategyContext, MarketAnalysis, CycleResult
 │   │   └── user/             # UserPreferences, SignalConfig, Watchlist
 │   ├── storage/              # JsonFileStore + per-domain stores (→ data/*.json)
-│   ├── orchestrator/         # TradingAgent, TradingCycle, AccountHistoryMode
+│   ├── orchestrator/         # TradingAgent facade, TradingCycle, AccountHistoryMode
+│   ├── agents/               # Phase 4 multi-agent coordinator + specialized agents
 │   ├── scheduler/            # TradingScheduler for trading_service.py
 │   ├── account/              # AccountHistoryFetcher, query resolver, aggregation
 │   ├── execution/            # SnapshotBuilder, Consolidator, Validator, Preparer, Executor

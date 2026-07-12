@@ -1,15 +1,16 @@
-"""TradingAgent orchestrator — wires data, analysis, strategy, and execution layers."""
+"""TradingAgent orchestrator — facade over Phase 4 CycleCoordinator."""
 
 import logging
-import uuid
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 
+from trading_agent.agents.coordinator import CycleCoordinator
+from trading_agent.agents.knowledge import KnowledgeBase
+from trading_agent.agents.registry import AgentRegistry, build_default_registry
 from trading_agent.broker.alpaca_client import AlpacaTradingClient
 from trading_agent.analysis.runner import AnalysisRunner
-from trading_agent.domain.cycle import CycleResult, StrategyContext, TradingDecision
 from trading_agent.domain.user.user_preferences import UserPreferences
 from trading_agent.execution import (
     PortfolioSnapshotBuilder,
@@ -42,6 +43,11 @@ class TradingAgent:
         alpaca_client: Optional[Any] = None,
         news_provider: Optional[NewsDataProvider] = None,
         fundamentals_provider: Optional[FundamentalDataProvider] = None,
+        registry: Optional[AgentRegistry] = None,
+        coordinator: Optional[CycleCoordinator] = None,
+        knowledge_base: Optional[KnowledgeBase] = None,
+        write_artifact: bool = False,
+        log_dir: Optional[Path] = None,
         **kwargs,
     ):
         load_dotenv()
@@ -69,6 +75,25 @@ class TradingAgent:
             max_position_size=max_position_size,
         )
 
+        self.knowledge_base = knowledge_base or KnowledgeBase()
+        self.registry = registry or build_default_registry(
+            llm_client=self.llm_client,
+            market_data_provider=self.market_data_provider,
+            alpaca_client=self.alpaca_client,
+            signal_aggregator=self.signal_aggregator,
+            user_preferences=self.user_preferences,
+            analysis_runner=self.analysis_runner,
+            trading_strategy=self.trading_strategy,
+            portfolio_rebalancer=self.portfolio_rebalancer,
+            snapshot_builder=self.snapshot_builder,
+            trade_preparer=self.trade_preparer,
+            trade_executor=self.trade_executor,
+            knowledge_base=self.knowledge_base,
+            log_dir=log_dir,
+            write_artifact=write_artifact,
+        )
+        self.coordinator = coordinator or CycleCoordinator(self.registry)
+
         self.last_market_analysis = None
         self.last_rebalancing = None
         self.last_market_conditions = None
@@ -80,88 +105,16 @@ class TradingAgent:
         strategy_params: Optional[Dict[str, Any]] = None,
         rebalance_params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        cycle_id = str(uuid.uuid4())
-        timestamp = datetime.now().isoformat()
+        result = self.coordinator.run(
+            analysis_params=analysis_params,
+            strategy_params=strategy_params,
+            rebalance_params=rebalance_params,
+        )
 
-        try:
-            raw_conditions = self.market_data_provider.get_market_conditions()
-            market_conditions = self.signal_aggregator.market_conditions_from_dict(raw_conditions)
-            self.last_market_conditions = market_conditions
+        ctx = self.coordinator.last_ctx or {}
+        self.last_market_conditions = ctx.get("market_conditions")
+        self.last_market_analysis = ctx.get("market_analysis")
+        self.last_portfolio = ctx.get("portfolio")
+        self.last_rebalancing = ctx.get("rebalancing")
 
-            portfolio = self.snapshot_builder.build(self.alpaca_client)
-            self.last_portfolio = portfolio
-
-            signals = self.signal_aggregator.collect(market_conditions, portfolio)
-            market_analysis = self.analysis_runner.run(
-                portfolio=portfolio,
-                signals=signals,
-                market_conditions=market_conditions,
-                user_preferences=self.user_preferences,
-                analysis_params=analysis_params,
-            )
-            self.last_market_analysis = market_analysis
-
-            if market_analysis.has_failure():
-                return CycleResult(
-                    status="failed",
-                    cycle_id=cycle_id,
-                    timestamp=timestamp,
-                    error="All market analysis strategies failed",
-                ).to_dict()
-
-            context = StrategyContext(
-                market_conditions=market_conditions,
-                market_analysis=market_analysis,
-                portfolio=portfolio,
-                user_preferences=self.user_preferences,
-                strategy_params=strategy_params or {},
-                rebalance_params=rebalance_params or {},
-                analysis_params=analysis_params or {},
-            )
-
-            decisions = self.trading_strategy.make_decisions(context)
-            strategy_hold = len(decisions) == 0
-
-            rebalancing = self.portfolio_rebalancer.rebalance_portfolio(context)
-            self.last_rebalancing = rebalancing
-            if rebalancing.get("status") == "success":
-                rebalance_orders = self.portfolio_rebalancer.generate_rebalancing_orders(
-                    context, rebalancing
-                )
-                decisions.extend(rebalance_orders)
-
-            preparation = self.trade_preparer.prepare(
-                decisions, portfolio, self.user_preferences
-            ) if decisions else None
-
-            executed = []
-            if preparation and preparation.executable:
-                executed = [
-                    t.to_dict()
-                    for t in self.trade_executor.execute(preparation.executable)
-                ]
-
-            hold = strategy_hold and len(executed) == 0
-
-            result = CycleResult(
-                status="success",
-                cycle_id=cycle_id,
-                timestamp=timestamp,
-                market_conditions=market_conditions,
-                market_analysis=market_analysis,
-                decisions=[d.to_dict() for d in (preparation.consolidated if preparation else decisions)],
-                hold=hold,
-                rebalancing=rebalancing,
-                preparation=preparation,
-                executed_trades=executed,
-            )
-            return result.to_dict()
-
-        except Exception as exc:
-            logger.error("Trading cycle failed: %s", exc)
-            return CycleResult(
-                status="failed",
-                cycle_id=cycle_id,
-                timestamp=timestamp,
-                error=str(exc),
-            ).to_dict()
+        return result

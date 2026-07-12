@@ -82,8 +82,13 @@ def main():
         cycle = TradingCycle()
         results = cycle.execute()
 
-        artifact_path = save_cycle_artifact(results)
-        logger.info("Cycle artifact saved to %s", artifact_path)
+        # DecisionLogger writes artifacts when write_artifact=True on TradingAgent.
+        artifact_path = results.get("artifact_path")
+        if artifact_path:
+            logger.info("Cycle artifact saved to %s", artifact_path)
+        else:
+            artifact_path = str(save_cycle_artifact(results))
+            logger.info("Cycle artifact saved to %s", artifact_path)
         print_cycle_summary(results)
 
         if results["status"] != "success":

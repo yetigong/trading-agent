@@ -12,6 +12,7 @@ This repository includes documentation for AI coding agents working in the codeb
 | [Account history](docs/agents/account-history.md) | Read-only account snapshot and equity history mode |
 | [Market signals](docs/agents/market-signals.md) | Phase 2 signal providers, env keys, extension guide |
 | [Backtesting](docs/agents/backtesting.md) | Phase 3 historical replay, benchmarks, CLI |
+| [Multi-agent](docs/agents/multi-agent.md) | Phase 4 agents, coordinator, knowledge base |
 | [PR descriptions](docs/agents/pr-description.md) | How to write pull request summaries |
 | [Project plan](docs/PROJECT_PLAN.md) | Roadmap and phase status |
 
@@ -20,6 +21,17 @@ When making changes, prefer minimal diffs, match existing patterns, and run test
 ```bash
 .venv/bin/bash scripts/run_tests.sh
 ```
+
+## Per-PR test requirements
+
+Every PR (except explicitly doc-only) must:
+
+1. Pass `bash scripts/run_tests.sh` / CI `test` job
+2. Add or update `tests/` coverage for changed business logic (main flow components, not 100% lines)
+3. Keep unit tests mock-based (no API keys required in CI)
+4. Run live `tests/integration/` locally when touching Alpaca / LLM / Finnhub / FMP providers
+5. Leave no root-level `test_*.py` or committed throwaway scripts
+6. Follow [PR description](docs/agents/pr-description.md) including the Test plan checklist
 
 ## Testing and test hygiene
 
@@ -30,4 +42,4 @@ When making changes, prefer minimal diffs, match existing patterns, and run test
 - **Before PR** — run `scripts/run_tests.sh`; if you changed Alpaca or LLM providers, confirm integration tests ran (not skipped) locally
 - **Prefer mocks** — use `MockLLMClient` and `MockAlpacaTradingClient` for CI-safe coverage
 
-See [development guide](docs/agents/development.md) for setup and commands.
+See [development guide](docs/agents/development.md) and [PR descriptions](docs/agents/pr-description.md) for setup and the full PR test checklist.

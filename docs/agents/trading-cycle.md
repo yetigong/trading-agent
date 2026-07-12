@@ -12,31 +12,25 @@ Both trading scripts delegate to `trading_agent/orchestrator/`. Account history 
 
 ## Sequence
 
+Phase 4: `TradingAgent` delegates to `CycleCoordinator` (see **[multi-agent.md](multi-agent.md)**). The layered modules below still do the work inside each agent.
+
 ```mermaid
 sequenceDiagram
     participant RA as run_agent / TradingCycle
     participant TA as TradingAgent
-    participant MD as MarketDataProvider
-    participant SA as SignalAggregator
-    participant AR as AnalysisRunner
-    participant STR as GeneralTradingStrategy
-    participant PRE as TradePreparer
-    participant BRK as AlpacaClient
+    participant CC as CycleCoordinator
+    participant MA as MarketAnalyzer
+    participant TS as Strategizer
+    participant TE as ExecutorAgent
+    participant DL as DecisionLogger
 
     RA->>TA: run_trading_cycle(params)
-    TA->>MD: get_market_conditions()
-    TA->>BRK: PortfolioSnapshotBuilder.build()
-    TA->>SA: collect(conditions, portfolio)
-    SA-->>TA: MarketSignals
-    TA->>AR: run(general + technical + fundamental, signals)
-    TA->>STR: make_decisions(StrategyContext)
-    alt strategy decisions empty
-        TA->>TA: hold candidate
-    else has decisions
-        TA->>TA: rebalance optional orders
-    end
-    TA->>PRE: prepare(consolidate + validate)
-    TA->>BRK: TradeExecutor.execute(executable)
+    TA->>CC: run(params)
+    CC->>MA: signals + analysis
+    CC->>TS: strategy + rebalancer
+    CC->>TE: prepare + execute
+    CC->>DL: CycleResult (+ artifact when enabled)
+    CC-->>TA: CycleResult dict
     TA-->>RA: CycleResult + preparation + executed_trades
 ```
 
