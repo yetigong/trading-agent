@@ -24,4 +24,5 @@ Also see **[../PROJECT_PLAN.md](../PROJECT_PLAN.md)** for roadmap and phase stat
 - **Test with mocks** — use `LLM_PROVIDER=mock` and `MockBrokerClient` in tests; CI has no API keys
 - **No root-level test files** — put unit/mock tests in `tests/` and live API checks in `tests/integration/`
 - **Per-PR tests** — run `bash scripts/run_tests.sh`; cover changed logic; include a Test plan checklist on every PR
+- **Parallel work** — when running multiple tasks at once, use [git worktrees](development.md#parallel-work-prefer-git-worktrees) (separate directories per branch); remove worktrees when done
 - **Structured LLM output** — trading decisions must parse as JSON via `trading_agent/models.py`

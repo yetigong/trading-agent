@@ -148,6 +148,66 @@ When changing market signal providers or indicators, update [`market-signals.md`
 - Do not commit `.env`, credentials, `data/`, or `logs/` cycle artifacts
 - Run tests before pushing — `.venv/bin/bash scripts/run_tests.sh`
 
+### Parallel work: prefer git worktrees
+
+When running **multiple tasks in parallel** (several agents, best-of-N attempts, or overlapping PRs), prefer **git worktrees** over repeatedly checking out branches in a single working directory. Each worktree gets its own checkout path, so parallel runs do not fight over uncommitted changes, build artifacts, or branch switches.
+
+Use a **single checkout** only for one focused task at a time.
+
+#### Create a worktree
+
+From the primary repo checkout (usually the main clone at `trading-agent/`):
+
+```bash
+# New branch from latest main
+git fetch origin main
+git worktree add ../trading-agent-<slug> -b cursor/<descriptive-name>-6b7c origin/main
+
+# Existing branch (e.g. resume or second agent on same PR branch)
+git worktree add ../trading-agent-<slug> cursor/<descriptive-name>-6b7c
+```
+
+Conventions:
+
+- Put sibling worktrees next to the main clone: `../trading-agent-<slug>/` (short, filesystem-safe slug)
+- Keep branch names under `cursor/<descriptive-name>-6b7c` (same as single-checkout workflow)
+- One branch per worktree — do not check out the same branch in two worktrees
+
+#### Per-worktree setup
+
+Each worktree is an independent directory. Repeat local setup there (gitignored files are not shared):
+
+```bash
+cd ../trading-agent-<slug>
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env    # or copy/symlink from the main checkout
+cp -r data.example data  # or copy/symlink from the main checkout
+```
+
+Run tests and commits from inside that worktree path.
+
+#### Inspect and clean up
+
+When a task is done (PR merged or abandoned):
+
+```bash
+# From any checkout of this repo
+git worktree list
+
+# Remove the extra checkout (use --force if there are uncommitted changes you are discarding)
+git worktree remove ../trading-agent-<slug>
+
+# Delete the branch after merge, or if abandoning work
+git branch -d cursor/<descriptive-name>-6b7c
+
+# Drop stale worktree metadata if a directory was deleted manually
+git worktree prune
+```
+
+Do not leave orphaned worktrees under `../trading-agent-*` after work finishes.
+
 ## Docker
 
 ```bash
