@@ -1,5 +1,15 @@
 {
+  "schema_version": 2,
+  "user_id": "default",
+  "updated_at": "2026-07-12T00:00:00Z",
+  "derived_state": {
+    "signal_weights": {},
+    "strategy_preferences": {},
+    "active_recommendation_id": null,
+    "last_promotion_id": null
+  },
   "lessons": [],
-  "signal_weights": {},
-  "strategy_preferences": {}
+  "backtest_validations": [],
+  "config_recommendations": [],
+  "promotions": []
 }

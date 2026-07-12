@@ -123,10 +123,12 @@ class LessonsUpdate:
     lessons_added: List[str] = field(default_factory=list)
     signal_weights: Dict[str, float] = field(default_factory=dict)
     strategy_preferences: Dict[str, Any] = field(default_factory=dict)
+    lesson_records: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "lessons_added": list(self.lessons_added),
             "signal_weights": dict(self.signal_weights),
             "strategy_preferences": dict(self.strategy_preferences),
+            "lesson_records": list(self.lesson_records),
         }

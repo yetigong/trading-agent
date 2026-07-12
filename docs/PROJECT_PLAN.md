@@ -1,6 +1,6 @@
 # Trading Agent — Project Plan
 
-Last updated: 2026-07-11
+Last updated: 2026-07-12
 
 ## Overview
 
@@ -125,6 +125,7 @@ flowchart TD
 | **Phase 2** — Richer market context | **Done** | RSI/MACD, sector ETFs, Finnhub news, FMP fundamentals in prompts |
 | **Phase 3** — Backtesting | **Done** | Historical replay via TradingAgent; benchmarks; `run_backtest.py`; per-provider cache |
 | **Phase 4** — Multi-agent architecture | **Done** | Analyzer, strategizer, executor, logger, learner; `trading_agent/agents/` + coordinator |
+| **Phase 4.5** — Learning loop | **In progress** | KB v2 + backtest feedback + human promote (A/B done; sweep/live trigger planned) |
 | **Phase 5** — Multi-broker | **Done** | `BrokerClient` + Alpaca, Robinhood (optional), mock |
 | **Phase 6** — Data persistence | Planned | DB for prefs, history, confirmations, knowledge base |
 | **Phase 7** — Manageability UX | Planned | Console for agents, LLM config, activity and history |
@@ -280,6 +281,33 @@ flowchart TD
 - **Tests** — `tests/test_multi_agent.py`; existing cycle integration still green
 - **Docs** — `docs/agents/multi-agent.md`
 
+### Feedback loop status (scaffold vs closed loop)
+
+Phase 4 delivered the **structural** loop (logger → learner → file KB → analyzer/strategizer params). Soft fields were not fully prompted and backtests could pollute the live KB. **Phase 4.5** closes the semantic loop (see below).
+
+---
+
+## Phase 4.5: Learning Loop
+
+**Goal:** Clear, auditable, effective tuning: backtest/live outcomes update a versioned knowledge base; soft context reaches LLM prompts; hard config changes require human approval (walk-forward gate before promote).
+
+**Doc:** [`docs/agents/learning-loop.md`](agents/learning-loop.md)
+
+### Delivered (A + B)
+
+- Backtest disables `LearnerAgent` (no per-cycle KB pollution)
+- Analysis/strategy prompts include lessons, signal weights, `recent_trade_bias`
+- KB schema v2 with `user_id`, typed records, EventRef provenance, v1 migration
+- `BacktestFeedbackAgent` + `run_backtest.py --feedback`
+- Review CLI (`scripts/review_config_recommendation.py`) and lineage (`scripts/kb_lineage.py`)
+- Learner patches `lessons_update` onto cycle artifacts; backtest summaries include `cycle_id`
+
+### Planned (C + D)
+
+- Parameter sweep CLI + `select_best_run`
+- Walk-forward required for production promotes (`--require-validate-window` already supported)
+- Live underperformance trigger → re-backtest (not live auto-rewrite of `data/*.json`)
+
 ---
 
 ## Phase 5: Multi-Broker Support
@@ -389,12 +417,13 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 3. ~~Phase 1 follow-ups~~ — pre-trade validation, dedupe ✓
 4. ~~Phase 3~~ — backtesting ✓
 5. ~~**Phase 4** — multi-agent architecture~~ ✓
-6. **Phase 5** — multi-broker (when Trade Executor needs more than Alpaca)
-7. **Phase 6** — data persistence (before UX and multi-user)
-8. **Phase 7** — manageability UX
-9. **Phase 8** — sign up & authentication
-10. **Phase 9** — multi-customer isolation (harden before hosted launch)
-11. **Phase 10** — production hardening before live money at scale
+6. **Phase 4.5** — learning loop (A/B done; C sweep + D live trigger next)
+7. ~~**Phase 5** — multi-broker~~ ✓
+8. **Phase 6** — data persistence (before UX and multi-user)
+9. **Phase 7** — manageability UX
+10. **Phase 8** — sign up & authentication
+11. **Phase 9** — multi-customer isolation (harden before hosted launch)
+12. **Phase 10** — production hardening before live money at scale
 
 ---
 
@@ -411,6 +440,7 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 | Account history fetcher | `trading_agent/account/` |
 | Core orchestrator | `trading_agent/orchestrator/agent.py` (`TradingAgent` facade) |
 | Multi-agent package | `trading_agent/agents/` |
+| Learning loop | `trading_agent/agents/backtest_feedback.py`, `promotion.py`; `docs/agents/learning-loop.md` |
 | Backtest engine | `trading_agent/backtest/` |
 | Historical market data | `trading_agent/market_data/alpaca_historical.py`, `finnhub_historical.py` |
 | Config | `trading_agent/config.py` |

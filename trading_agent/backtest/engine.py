@@ -185,6 +185,8 @@ class BacktestEngine:
                     fundamentals_provider=MockFundamentalsProvider(metrics={}),
                     broker_client=broker,
                     universe_symbols=symbols,
+                    # Prevent per-cycle learner writes from polluting live KB.
+                    disabled=["learner"],
                 )
 
             equity_curve: List[Dict[str, Any]] = []
@@ -207,6 +209,7 @@ class BacktestEngine:
                         llm_meta = llm.stats()
                     cycle_summaries.append({
                         "date": day.isoformat(),
+                        "cycle_id": cycle_result.get("cycle_id"),
                         "status": cycle_result.get("status"),
                         "hold": cycle_result.get("hold"),
                         "decisions": cycle_result.get("decisions") or [],

@@ -11,8 +11,9 @@ Use these guides when implementing features, fixing bugs, or opening pull reques
 5. **[market-signals.md](market-signals.md)** — Phase 2 signal slices, env keys, extension guide
 6. **[backtesting.md](backtesting.md)** — Phase 3 historical replay, benchmarks, CLI
 7. **[multi-agent.md](multi-agent.md)** — Phase 4 agents, coordinator, knowledge base
-8. **[multi-broker.md](multi-broker.md)** — Phase 5 broker abstraction, Alpaca/Robinhood/mock
-9. **[pr-description.md](pr-description.md)** — required PR description format and [per-PR test requirements](pr-description.md#test-requirements-every-pr)
+8. **[learning-loop.md](learning-loop.md)** — Phase 4.5 backtest feedback, KB v2, promotion workflow
+9. **[multi-broker.md](multi-broker.md)** — Phase 5 broker abstraction, Alpaca/Robinhood/mock
+10. **[pr-description.md](pr-description.md)** — required PR description format and [per-PR test requirements](pr-description.md#test-requirements-every-pr)
 
 Also see **[../PROJECT_PLAN.md](../PROJECT_PLAN.md)** for roadmap and phase status.
 

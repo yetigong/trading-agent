@@ -33,7 +33,14 @@ Manual, repeatable evaluation of the live `TradingAgent` pipeline on historical 
 .venv/bin/python run_backtest.py --compare \
   logs/backtest_*_baseline.json \
   logs/backtest_*_aggressive-v2.json
+
+# Score a completed run into the knowledge base (may create pending_review)
+.venv/bin/python run_backtest.py --feedback logs/backtest_*_baseline.json
+# Or run + feedback in one shot:
+.venv/bin/python run_backtest.py --start 2024-01-01 --end 2024-06-30 --feedback
 ```
+
+Learner is **disabled** during backtest replay so live `knowledge_base.json` is not polluted by per-cycle strings. Aggregate learning uses `--feedback` — see [learning-loop.md](learning-loop.md).
 
 Artifacts are written to `logs/backtest_<timestamp>_<run_label>.json`.
 

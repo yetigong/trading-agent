@@ -43,19 +43,12 @@ sequenceDiagram
 
 ## Knowledge base
 
-Template: [`data.example/knowledge_base.json`](../../data.example/knowledge_base.json). Seeded into `data/` on first use (gitignored).
+Template: [`data.example/knowledge_base.json`](../../data.example/knowledge_base.json). Seeded into `data/` on first use (gitignored). Schema **v2** (lessons, validations, recommendations, promotions) — see [learning-loop.md](learning-loop.md).
 
-```json
-{
-  "lessons": [],
-  "signal_weights": {},
-  "strategy_preferences": {}
-}
-```
-
-- Analyzer injects recent lessons / weights into `analysis_params` (prompt hints).
-- Strategizer merges `strategy_preferences` into strategy params.
-- Learner appends one lesson per cycle and nudges `recent_trade_bias`.
+- Analyzer injects recent lessons / weights into analysis prompts.
+- Strategizer merges soft `strategy_preferences` (config wins on conflicts) and backtest validation summary.
+- Learner appends live lessons and nudges `recent_trade_bias`; patches `lessons_update` onto cycle artifacts.
+- Backtests disable the learner; use `run_backtest.py --feedback` for aggregate learning.
 
 ## Artifacts
 
