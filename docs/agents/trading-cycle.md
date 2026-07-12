@@ -4,15 +4,16 @@
 
 | Script | Behavior |
 |--------|----------|
-| `run_agent.py` | One cycle; validates config; saves artifact; prints summary |
+| `run_agent.py` | One **live** cycle; validates config; saves artifact; prints summary |
 | `run_account_history.py` | One account history fetch; Alpaca keys only; saves `logs/account_history_*.json` |
-| `trading_service.py` | Loops forever via `TradingScheduler` every `TRADING_CYCLE_INTERVAL` minutes |
+| `trading_service.py` | Loops forever via `TradingScheduler` every `TRADING_CYCLE_INTERVAL` minutes (**live** deploy path) |
+| `run_backtest.py` | Historical replay — **not** the live path; must not trigger retrospection/sweep (Phase 4.5.2) |
 
-Both trading scripts delegate to `trading_agent/orchestrator/`. Account history is separate — see **[account-history.md](account-history.md)**.
+Live trading scripts delegate to `trading_agent/orchestrator/`. Account history is separate — see **[account-history.md](account-history.md)**. Offline learning lives in [`strategy_learning/`](../../strategy_learning/) — see **[learning-loop.md](learning-loop.md)**.
 
 ## Sequence
 
-Phase 4: `TradingAgent` delegates to `CycleCoordinator` (see **[multi-agent.md](multi-agent.md)**). The layered modules below still do the work inside each agent.
+Phase 4: `TradingAgent` delegates to `CycleCoordinator` (see **[multi-agent.md](multi-agent.md)**). The layered modules below still do the work inside each agent. Phase 4.5.2 splits explicit `LiveAgentRun` vs `BacktestAgentRun` wrappers so only live runs can signal `strategy_learning` retrospection.
 
 ```mermaid
 sequenceDiagram

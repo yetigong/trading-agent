@@ -1,6 +1,6 @@
 # Multi-agent architecture (Phase 4)
 
-Specialized agents collaborate on each trading cycle. `TradingAgent` remains the public facade (used by `TradingCycle` and backtests) and delegates to `CycleCoordinator`.
+Specialized agents collaborate on each trading cycle. `TradingAgent` remains the public facade (used by live `TradingCycle` and backtests) and delegates to `CycleCoordinator`. Phase 4.5.2 will split explicit `LiveAgentRun` / `BacktestAgentRun` wrappers around this shared cycle engine.
 
 ## Pipeline
 
@@ -43,7 +43,7 @@ sequenceDiagram
 
 ## Knowledge base
 
-Template: [`data.example/knowledge_base.json`](../../data.example/knowledge_base.json). Seeded into `data/` on first use (gitignored). Schema **v2** (lessons, validations, recommendations, promotions) — see [learning-loop.md](learning-loop.md).
+Template: [`data.example/knowledge_base.json`](../../data.example/knowledge_base.json). Seeded into `data/` on first use (gitignored). Schema **v2** (lessons, validations, recommendations, promotions) — see [learning-loop.md](learning-loop.md). Ownership moves to [`strategy_learning`](../../strategy_learning/) in Phase 4.5.3; until then modules remain under `trading_agent/agents/`.
 
 - Analyzer injects recent lessons / weights into analysis prompts.
 - Strategizer merges soft `strategy_preferences` (config wins on conflicts) and backtest validation summary.

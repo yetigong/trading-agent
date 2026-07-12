@@ -2,7 +2,14 @@
 
 ## What this project does
 
-LLM-driven **paper trading** on Alpaca, plus a separate **account history** mode for read-only portfolio tracking.
+LLM-driven **paper trading** (and optional live brokers) plus **offline strategy learning**. Two packages:
+
+| Package | Responsibility |
+|---------|----------------|
+| [`trading_agent/`](../../trading_agent/) | Live cycles, brokers, market data, decision logs, **config files**, backtest engine |
+| [`strategy_learning/`](../../strategy_learning/) | Knowledge base, recommendations, sweep, retrospection (scaffold now; see [learning-loop.md](learning-loop.md)) |
+
+`strategy_learning` **proposes** config changes; it does **not** write `data/*.json` params. Humans / future management UX apply approvals into trading_agent-owned configs.
 
 ### Trading cycle
 
@@ -26,53 +33,37 @@ Separate from the trading cycle — no LLM, no orders:
 
 See **[account-history.md](account-history.md)** for CLI usage and module layout.
 
-## Architecture (layers → directories)
+## Architecture (package boundary)
 
 ```mermaid
 flowchart TB
-    subgraph broker [trading_agent/broker]
-        FACTORY[build_broker_client]
-        AC[AlpacaBrokerClient]
-        RH[RobinhoodBrokerClient]
-        MOCK[MockBrokerClient]
-    end
-
-    subgraph orchestrator [trading_agent/orchestrator]
+    subgraph ta [trading_agent]
         TC[TradingCycle]
         TA[TradingAgent]
-        AHM[AccountHistoryMode]
+        BT[backtest]
+        Cfg[owns configs]
+        MD[market + cycle logs]
+        AG[agents + soft KB read]
     end
 
-    subgraph account [trading_agent/account]
-        AHF[AccountHistoryFetcher]
+    subgraph sl [strategy_learning]
+        KB[owns knowledge base]
+        Sweep[sweep]
+        Retro[retrospection]
     end
 
-    subgraph domain [trading_agent/domain]
-        PS[PortfolioSnapshot]
-        AS[AccountSnapshot]
-        MA[MarketAnalysis]
-        SC[StrategyContext]
-    end
-
-    subgraph analysis [trading_agent/analysis]
-        AR[AnalysisRunner]
-    end
-
-    subgraph execution [trading_agent/execution]
-        PRE[TradePreparer]
-        EXT[TradeExecutor]
-    end
-
-    TC --> TA
-    AHM --> AHF
-    TA --> AR --> MA
-    TA --> SC
-    TA --> PRE --> EXT
-    TA --> AC
-    AHM --> AC
+    TC --> TA --> AG
+    BT --> TA
+    Cfg -->|"read"| TA
+    MD --> TA
+    Retro -.->|"live signal only"| TC
+    Sweep -.->|"calls"| BT
+    Sweep --> KB
+    KB -.->|"soft context"| AG
+    Human[human / UX approve] -->|"writes"| Cfg
 ```
 
-**Keep this diagram in sync** with `docs/PROJECT_PLAN.md` when changing the pipeline.
+Internal live-pipeline layers (broker → analysis → execution) are unchanged; see [trading-cycle.md](trading-cycle.md). Keep this diagram in sync with `docs/PROJECT_PLAN.md`. Details: [learning-loop.md](learning-loop.md).
 
 ## Directory layout
 
@@ -82,7 +73,7 @@ trading-agent/
 ├── run_agent.py
 ├── run_account_history.py  # read-only account snapshot + equity history
 ├── trading_service.py
-├── trading_agent/
+├── trading_agent/            # Live trading + backtest (bundled through Phase 4.5)
 │   ├── broker/               # Alpaca trading client + mock (orders, account, history)
 │   ├── domain/               # Typed pipeline models
 │   │   ├── signals/          # MarketConditions, MarketSignals
@@ -105,6 +96,10 @@ trading-agent/
 │   ├── formatters/           # Domain → LLM prompt text
 │   ├── models.py             # JSON parsing helpers
 │   └── llm/
+├── strategy_learning/        # Offline tuning scaffold (Phase 4.5.1+)
+│   ├── knowledge/            # KB ownership — Phase 4.5.3
+│   ├── sweep/                # Param sweep — Phase 4.5.4
+│   └── retrospection/        # Live underperf trigger — Phase 4.5.5
 ├── run_backtest.py           # manual historical backtest CLI
 ├── tests/
 └── docs/
@@ -126,7 +121,7 @@ trading-agent/
 | `CycleResult` | `domain/cycle` | Top-level artifact |
 | `UserPreferences` | `domain/user` | Risk tolerance, goals — `data/preferences.json` |
 | `SignalConfig` | `domain/user` | Sector ETFs, enabled sources — `data/signal_config.json` |
-| `Watchlist` | `domain/user` | Symbols of interest — `data/watchlist.json` (stored, not yet wired) |
+| `Watchlist` | `domain/user` | Symbols of interest — `data/watchlist.json` |
 
 ## Important interfaces
 
@@ -160,6 +155,7 @@ trading-agent/
 | Cycle orchestration | `trading_agent/orchestrator/agent.py` |
 | Account history mode | `trading_agent/orchestrator/account_history.py`, `run_account_history.py` |
 | Backtesting | `trading_agent/backtest/`, `run_backtest.py`; see [backtesting.md](backtesting.md) |
+| Strategy learning | `strategy_learning/` scaffold; see [learning-loop.md](learning-loop.md) |
 | Prompt formatting | `trading_agent/formatters/` |
 | Decision JSON schema | `trading_agent/models.py`, `GeneralTradingStrategy` |
 | New broker | `trading_agent/broker/` + `build_broker_client()`; see [multi-broker.md](multi-broker.md) |

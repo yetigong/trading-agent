@@ -1,6 +1,8 @@
 # AI-Powered Trading Agent
 
-This project implements an AI-powered trading agent that uses Claude (Anthropic's LLM) to make trading decisions and execute them through the Alpaca Trading API.
+This project implements an AI-powered trading agent that uses LLMs to make trading decisions and execute them through broker APIs (Alpaca by default), plus a separate **`strategy_learning`** package for offline tuning (knowledge base, recommendations, sweeps).
+
+See **[docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)** for package boundaries and roadmap, and **[docs/agents/README.md](docs/agents/README.md)** for agent-oriented docs.
 
 ## Features
 
