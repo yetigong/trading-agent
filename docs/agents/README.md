@@ -11,16 +11,17 @@ Use these guides when implementing features, fixing bugs, or opening pull reques
 5. **[market-signals.md](market-signals.md)** — Phase 2 signal slices, env keys, extension guide
 6. **[backtesting.md](backtesting.md)** — Phase 3 historical replay, benchmarks, CLI
 7. **[multi-agent.md](multi-agent.md)** — Phase 4 agents, coordinator, knowledge base
-8. **[learning-loop.md](learning-loop.md)** — Phase 4.5 backtest feedback, KB v2, promotion workflow
+8. **[learning-loop.md](learning-loop.md)** — Phase 4.5 learning loop, `strategy_learning` boundary, sub-phases 4.5.1–4.5.5
 9. **[multi-broker.md](multi-broker.md)** — Phase 5 broker abstraction, Alpaca/Robinhood/mock
 10. **[pr-description.md](pr-description.md)** — required PR description format and [per-PR test requirements](pr-description.md#test-requirements-every-pr)
 
-Also see **[../PROJECT_PLAN.md](../PROJECT_PLAN.md)** for roadmap and phase status.
+Also see [`strategy_learning/README.md`](../../strategy_learning/README.md) for the offline learning package scaffold, and **[../PROJECT_PLAN.md](../PROJECT_PLAN.md)** for roadmap, package diagrams, and the data-boundary table.
 
 ## Principles for agents
 
 - **Minimize scope** — one concern per change; avoid drive-by refactors
 - **Match conventions** — read surrounding code before adding abstractions
+- **Package boundary** — `trading_agent` owns live trading + configs + backtest; `strategy_learning` owns KB/recommendations/sweep (scaffold now). Learning must not write `data/*.json` params — see [learning-loop.md](learning-loop.md)
 - **Paper trading default** — `ALPACA_PAPER=true`; never commit `.env` or secrets
 - **Test with mocks** — use `LLM_PROVIDER=mock` and `MockBrokerClient` in tests; CI has no API keys
 - **No root-level test files** — put unit/mock tests in `tests/` and live API checks in `tests/integration/`

@@ -2,7 +2,7 @@
 
 Closed-loop tuning: backtest / live outcomes → knowledge base → soft prompt context and hard (human-approved) config changes.
 
-See also [multi-agent.md](multi-agent.md), [backtesting.md](backtesting.md), and [PROJECT_PLAN.md](../PROJECT_PLAN.md).
+See also [multi-agent.md](multi-agent.md), [backtesting.md](backtesting.md), [`strategy_learning/README.md`](../../strategy_learning/README.md), and [PROJECT_PLAN.md](../PROJECT_PLAN.md).
 
 ## Status
 
@@ -10,13 +10,58 @@ See also [multi-agent.md](multi-agent.md), [backtesting.md](backtesting.md), and
 |-------|--------|
 | Phase A — learner isolation + prompt wiring | **Done** |
 | Phase B — KB schema v2 + backtest feedback + review CLI | **Done** |
-| Phase C — parameter sweep + walk-forward promote gate | Planned (gate API exists; full sweep CLI follow-up) |
-| Phase D — live underperformance → re-backtest | Planned |
-| Phase E / F — DB persistence + UX | Phase 6 / 7 |
+| **4.5.1** — `strategy_learning` scaffold + architecture docs | **Done** |
+| **4.5.2** — Live vs Backtest agent-run modes | Planned |
+| **4.5.3** — KB / data boundary into `strategy_learning` | Planned |
+| **4.5.4** — Param sweep (sole recommendation path) | Planned |
+| **4.5.5** — Live retrospection → sweep | Planned |
+| Phase 6 / 7 — DB persistence + UX | Later |
+| Phase 11 — strategy learning as separate service | Planned |
 
-**Phase 5 (multi-broker) remains planned** — do not treat the `BrokerClient` Protocol alone as Phase 5 complete.
+Phase 5 (multi-broker) is **Done** — see [multi-broker.md](multi-broker.md).
 
-## Architecture
+## Target package and data boundary
+
+```mermaid
+flowchart TB
+    subgraph ta [trading_agent]
+        Live[LiveAgentRun]
+        BTRun[BacktestAgentRun]
+        Cfg[owns configs data/*.json]
+        MD[market data + cycle logs]
+    end
+
+    subgraph sl [strategy_learning]
+        KB[owns knowledge_base]
+        Sweep[param sweep]
+        Recs[recommendations only]
+        Retro[live retrospection]
+    end
+
+    Live -->|"retrospection signal"| Retro
+    Retro --> Sweep
+    Manual[operator] --> Sweep
+    Sweep -->|"N x"| BTRun
+    Sweep --> Recs --> KB
+    Human[human / future UX] -->|"approve apply"| Cfg
+    KB -.->|"soft context read"| Live
+    Cfg -->|"runtime read"| Live
+    MD -.->|"read only"| sl
+```
+
+| Data | Owner | Rule |
+|------|-------|------|
+| Knowledge base + recommendations | **`strategy_learning`** (target) | Learning writes; trading_agent reads soft context for prompts |
+| Configs | **`trading_agent`** | Runtime reads; apply/approve is config-owner — **not** strategy_learning |
+| Market data / decisions | **`trading_agent`** | strategy_learning reads only |
+
+Today (through 4.5.1) KB / feedback / promotion still live under `trading_agent/agents/`. The [`strategy_learning/`](../../strategy_learning/) package is a scaffold for 4.5.3+.
+
+**Circular-trigger rule (4.5.2):** only live runs may invoke retrospection/sweep. Backtest runs must not. Deploy uses live mode only.
+
+## Architecture (current runtime — A/B)
+
+Still implemented under `trading_agent/agents/` until 4.5.3+ moves KB/recs into `strategy_learning`. Soft context is read by live prompts; hard apply stays config-owner (`data/*.json`).
 
 ```mermaid
 flowchart TB
@@ -28,11 +73,11 @@ flowchart TB
 
     subgraph hard [Hard influence]
         CR["config_recommendations"]
-        APPROVE["review CLI approve"]
-        CFG["data/*.json"]
+        APPROVE["review CLI approve config-owner"]
+        CFG["trading_agent configs"]
     end
 
-    BT["BacktestEngine"] -->|"disabled learner"| ART["logs/backtest_*.json"]
+    BT["trading_agent BacktestEngine"] -->|"disabled learner"| ART["logs/backtest_*.json"]
     ART --> FB["BacktestFeedbackAgent"]
     FB --> KB["knowledge_base.json v2"]
     LIVE["Live TradingCycle"] --> LR["LearnerAgent"]
@@ -47,7 +92,7 @@ flowchart TB
 ### Soft vs hard
 
 - **Soft** — lessons, `signal_weights`, `recent_trade_bias` appear in LLM prompts. Probabilistic. `recent_trade_bias` is KB-only (never written to `strategy_params.json`). Active config keys win over KB prefs on conflict (`{**kb_prefs, **strategy_params}`).
-- **Hard** — `config_recommendations` with `pending_review`; only `--approve` writes `data/*.json`. Default is human-in-the-loop.
+- **Hard** — `config_recommendations` with `pending_review`; only `--approve` writes `data/*.json`. Default is human-in-the-loop. (After 4.5.4, recommendations come from **sweep only**.)
 
 ### Backtest vs live
 
@@ -107,22 +152,22 @@ Updated only by **BacktestFeedback** with capped deltas (±0.1, clamped to [0.5,
 
 Promotion audits land in `logs/config_promotions_<timestamp>.json`.
 
-### Walk-forward gate (Phase C requirement)
+### Walk-forward gate
 
-Promoting on a single window overfits. `--require-validate-window` blocks approve unless a held-out backtest artifact has `status=success`. Full sweep CLI is still planned; use this flag before live promotion.
+Promoting on a single window overfits. `--require-validate-window` blocks approve unless a held-out backtest artifact has `status=success`. Full sweep CLI lands in 4.5.4; use this flag before live promotion.
 
 ### Proposed change caps
 
 Feedback may change only whitelisted discrete steps: `risk_management`, `position_sizing`, `timeframe`, `max_position_size`, rebalance `threshold`. One pending recommendation at a time (older pending → `superseded`).
 
-## Live underperformance trigger (Phase D — planned)
+## Live underperformance trigger (4.5.5 — planned)
 
 v1 definition when implemented:
 
 - Rolling 30d equity return lags SPY by more than a configured threshold, **or**
 - 3 consecutive successful cycles with `hold=true` while SPY rises over the same span
 
-Live learner must **not** rewrite `data/*.json`; it should emit a trigger → re-backtest → feedback → human promote.
+Must **not** rewrite `data/*.json`; emit a trigger → sweep → human promote via config-owner path. Only from **live** runs.
 
 ## Audit: lessons on cycle artifacts
 
@@ -134,10 +179,11 @@ Backtest `cycle_summaries[]` include `cycle_id` for lineage into parent `logs/ba
 
 | Module | Role |
 |--------|------|
-| `trading_agent/agents/knowledge.py` | KB v2 load/save/migrate |
+| `strategy_learning/` | Package scaffold (4.5.1); KB/sweep/retrospection land in later sub-phases |
+| `trading_agent/agents/knowledge.py` | KB v2 load/save/migrate (**current**; moves in 4.5.3) |
 | `trading_agent/agents/kb_records.py` | EventRef, migration, trim, enums |
 | `trading_agent/agents/backtest_feedback.py` | Score run → validation / recommendation |
-| `trading_agent/agents/promotion.py` | Approve / reject / defer |
+| `trading_agent/agents/promotion.py` | Approve / reject / defer (config-owner side) |
 | `trading_agent/agents/learner.py` | Live lessons + artifact patch |
 | `trading_agent/formatters/knowledge.py` | Prompt blocks |
 | `scripts/review_config_recommendation.py` | Operator CLI |
@@ -145,5 +191,6 @@ Backtest `cycle_summaries[]` include `cycle_id` for lineage into parent `logs/ba
 
 ## Tests
 
+- `tests/test_strategy_learning_scaffold.py` — package importable (4.5.1)
 - `tests/test_learning_prompts.py` — prompt inclusion, learner disabled in backtest agent, artifact patch
 - `tests/test_learning_loop.py` — v2 migration, EventRef rejects, feedback → pending, walk-forward gate, user_id mismatch
