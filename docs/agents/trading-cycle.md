@@ -13,11 +13,12 @@ Live trading scripts delegate to `trading_agent/orchestrator/`. Account history 
 
 ## Sequence
 
-Phase 4: `TradingAgent` delegates to `CycleCoordinator` (see **[multi-agent.md](multi-agent.md)**). The layered modules below still do the work inside each agent. Phase 4.5.2 splits explicit `LiveAgentRun` vs `BacktestAgentRun` wrappers so only live runs can signal `strategy_learning` retrospection.
+Phase 4: `TradingAgent` delegates to `CycleCoordinator` (see **[multi-agent.md](multi-agent.md)**). The layered modules below still do the work inside each agent. Phase 4.5.2: `TradingCycle` uses `LiveAgentRun`; backtests use `BacktestAgentRun` — only live may signal `strategy_learning` retrospection.
 
 ```mermaid
 sequenceDiagram
     participant RA as run_agent / TradingCycle
+    participant Live as LiveAgentRun
     participant TA as TradingAgent
     participant CC as CycleCoordinator
     participant MA as MarketAnalyzer
@@ -25,14 +26,16 @@ sequenceDiagram
     participant TE as ExecutorAgent
     participant DL as DecisionLogger
 
-    RA->>TA: run_trading_cycle(params)
+    RA->>Live: run_trading_cycle(params)
+    Live->>TA: run_trading_cycle(params)
     TA->>CC: run(params)
     CC->>MA: signals + analysis
     CC->>TS: strategy + rebalancer
     CC->>TE: prepare + execute
     CC->>DL: CycleResult (+ artifact when enabled)
     CC-->>TA: CycleResult dict
-    TA-->>RA: CycleResult + preparation + executed_trades
+    TA-->>Live: CycleResult
+    Live-->>RA: CycleResult + preparation + executed_trades
 ```
 
 ## Cycle result shape

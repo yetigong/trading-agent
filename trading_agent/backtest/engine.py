@@ -33,7 +33,7 @@ from trading_agent.market_data.finnhub_historical import (
     get_finnhub_cache_dir,
 )
 from trading_agent.market_data.mock_fundamentals_provider import MockFundamentalsProvider
-from trading_agent.orchestrator.agent import TradingAgent
+from trading_agent.orchestrator.agent_run import BacktestAgentRun
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +175,7 @@ class BacktestEngine:
             agent = None
             if not config.skip_llm:
                 max_position_size = float(prefs.get("max_position_size", 0.25))
-                agent = TradingAgent(
+                agent = BacktestAgentRun(
                     risk_tolerance=prefs.get("risk_tolerance", "moderate"),
                     investment_goal=prefs.get("investment_goal", "growth"),
                     max_position_size=max_position_size,
@@ -185,8 +185,6 @@ class BacktestEngine:
                     fundamentals_provider=MockFundamentalsProvider(metrics={}),
                     broker_client=broker,
                     universe_symbols=symbols,
-                    # Prevent per-cycle learner writes from polluting live KB.
-                    disabled=["learner"],
                 )
 
             equity_curve: List[Dict[str, Any]] = []

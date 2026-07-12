@@ -21,10 +21,11 @@ def main():
     logger = logging.getLogger(__name__)
     
     try:
+        # Deploy path is live-only (LiveAgentRun via TradingCycle); never backtest.
         trading_cycle = TradingCycle()
         scheduler = TradingScheduler(interval_minutes=config.trading_cycle_interval)
         logger.info(
-            "Starting trading service (interval=%d min, llm=%s)...",
+            "Starting trading service (live mode, interval=%d min, llm=%s)...",
             config.trading_cycle_interval,
             config.llm_provider,
         )

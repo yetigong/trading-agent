@@ -9,7 +9,7 @@ from trading_agent.config import config_summary, get_config
 from trading_agent.llm.client import build_llm_client
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from trading_agent.models import trade_result_detail
-from trading_agent.orchestrator.agent import TradingAgent
+from trading_agent.orchestrator.agent_run import LiveAgentRun
 from trading_agent.storage import (
     AnalysisConfigStore,
     BrokerageConfigStore,
@@ -70,8 +70,8 @@ class TradingCycle:
             brokerage_config=self.brokerage_config,
         )
 
-        self.logger.info("Creating trading agent...")
-        self.agent = TradingAgent(
+        self.logger.info("Creating live agent run...")
+        self.agent = LiveAgentRun(
             risk_tolerance=self.user_preferences.risk_tolerance,
             investment_goal=self.user_preferences.investment_goal,
             max_position_size=self.user_preferences.max_position_size,
@@ -79,7 +79,6 @@ class TradingCycle:
             market_data_provider=self.market_data_provider,
             broker_client=self.broker_client,
             universe_symbols=list(self.watchlist.symbols or []),
-            write_artifact=True,
         )
 
     def execute(self):

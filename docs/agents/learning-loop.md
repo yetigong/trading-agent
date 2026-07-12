@@ -11,7 +11,7 @@ See also [multi-agent.md](multi-agent.md), [backtesting.md](backtesting.md), [`s
 | Phase A — learner isolation + prompt wiring | **Done** |
 | Phase B — KB schema v2 + backtest feedback + review CLI | **Done** |
 | **4.5.1** — `strategy_learning` scaffold + architecture docs | **Done** |
-| **4.5.2** — Live vs Backtest agent-run modes | Planned |
+| **4.5.2** — Live vs Backtest agent-run modes | **Done** |
 | **4.5.3** — KB / data boundary into `strategy_learning` | Planned |
 | **4.5.4** — Param sweep (sole recommendation path) | Planned |
 | **4.5.5** — Live retrospection → sweep | Planned |
@@ -55,9 +55,9 @@ flowchart TB
 | Configs | **`trading_agent`** | Runtime reads; apply/approve is config-owner — **not** strategy_learning |
 | Market data / decisions | **`trading_agent`** | strategy_learning reads only |
 
-Today (through 4.5.1) KB / feedback / promotion still live under `trading_agent/agents/`. The [`strategy_learning/`](../../strategy_learning/) package is a scaffold for 4.5.3+.
+Today (through 4.5.2) KB / feedback / promotion still live under `trading_agent/agents/`. The [`strategy_learning/`](../../strategy_learning/) package is a scaffold for 4.5.3+.
 
-**Circular-trigger rule (4.5.2):** only live runs may invoke retrospection/sweep. Backtest runs must not. Deploy uses live mode only.
+**Circular-trigger rule (4.5.2 — enforced):** only live runs may invoke retrospection/sweep. Encoded on `LiveAgentRun` / `BacktestAgentRun` in `trading_agent/orchestrator/agent_run.py`. Deploy uses live mode only.
 
 ## Architecture (current runtime — A/B)
 
@@ -180,6 +180,7 @@ Backtest `cycle_summaries[]` include `cycle_id` for lineage into parent `logs/ba
 | Module | Role |
 |--------|------|
 | `strategy_learning/` | Package scaffold (4.5.1); KB/sweep/retrospection land in later sub-phases |
+| `trading_agent/orchestrator/agent_run.py` | `LiveAgentRun` / `BacktestAgentRun` (4.5.2); circular-trigger guard |
 | `trading_agent/agents/knowledge.py` | KB v2 load/save/migrate (**current**; moves in 4.5.3) |
 | `trading_agent/agents/kb_records.py` | EventRef, migration, trim, enums |
 | `trading_agent/agents/backtest_feedback.py` | Score run → validation / recommendation |
@@ -192,5 +193,6 @@ Backtest `cycle_summaries[]` include `cycle_id` for lineage into parent `logs/ba
 ## Tests
 
 - `tests/test_strategy_learning_scaffold.py` — package importable (4.5.1)
+- `tests/test_agent_run_modes.py` — Live/Backtest run modes + circular-trigger guard (4.5.2)
 - `tests/test_learning_prompts.py` — prompt inclusion, learner disabled in backtest agent, artifact patch
 - `tests/test_learning_loop.py` — v2 migration, EventRef rejects, feedback → pending, walk-forward gate, user_id mismatch
