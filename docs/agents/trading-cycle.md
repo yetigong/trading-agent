@@ -76,4 +76,4 @@ An empty decision list from the strategy is **valid** — treated as HOLD. Rebal
 - **Pre-trade rules** — `trading_agent/execution/validator.py`, `consolidator.py`
 - **Broker submit** — `trading_agent/execution/executor.py`
 - **Orchestration** — `trading_agent/orchestrator/agent.py`
-- **Summary output** — `run_agent.py`, `orchestrator/cycle.py`
+- **Summary output** — `run_agent.py`, `orchestrator/trading_cycle.py`

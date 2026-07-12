@@ -32,10 +32,11 @@ class TestFMPCache(unittest.TestCase):
         self.assertIn("symbol_AAPL", key)
 
     def test_write_and_read_same_day(self):
+        today = datetime.now(timezone.utc).date()
         payload = [{"peRatioTTM": 20.0}]
-        write_cache("ratios-ttm", payload, day=date(2026, 7, 11), symbol="AAPL")
+        write_cache("ratios-ttm", payload, day=today, symbol="AAPL")
 
-        cached = read_cache("ratios-ttm", day=date(2026, 7, 11), symbol="AAPL")
+        cached = read_cache("ratios-ttm", day=today, symbol="AAPL")
         self.assertEqual(cached, payload)
 
     def test_cache_miss_on_different_day(self):

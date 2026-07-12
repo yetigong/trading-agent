@@ -37,7 +37,7 @@ jobs:
         
     - name: Run pytest tests with coverage
       run: |
-        PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests/ --cov=agent --cov-report=term
+        PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests/ --cov=trading_agent --cov-report=term
 
   build-and-push:
     needs: test

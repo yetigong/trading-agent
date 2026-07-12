@@ -1,5 +1,0 @@
-"""Backward-compatible re-export. Prefer trading_agent.orchestrator.agent."""
-
-from trading_agent.orchestrator.agent import TradingAgent
-
-__all__ = ["TradingAgent"]

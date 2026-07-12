@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 
-from alpaca_client import AlpacaTradingClient
+from trading_agent.broker.alpaca_client import AlpacaTradingClient
 from trading_agent.analysis.runner import AnalysisRunner
 from trading_agent.domain.cycle import CycleResult, StrategyContext, TradingDecision
 from trading_agent.domain.user.user_preferences import UserPreferences
