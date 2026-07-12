@@ -291,6 +291,8 @@ flowchart TD
 - `AlpacaBrokerClient` (default, paper via `ALPACA_PAPER`), `MockBrokerClient`, optional `RobinhoodBrokerClient`
 - Pipeline wired via `broker_client` injection; market data remains Alpaca-decoupled
 
+**TODO (follow-up):** Live Robinhood E2E verification — run `tests/integration/test_robinhood_live.py`, `run_account_history.py`, and `run_agent.py` with `BROKER_PROVIDER=robinhood` against a real account (no paper mode). See [multi-broker.md](agents/multi-broker.md).
+
 ---
 
 ## Phase 6: Data Persistence

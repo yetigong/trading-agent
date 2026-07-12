@@ -4,6 +4,11 @@ import unittest
 from trading_agent.broker.robinhood_client import RobinhoodBrokerClient
 from trading_agent.domain.broker import OrderSide
 
+# TODO: Run live Robinhood E2E verification locally (account history CLI + optional
+# order smoke + full cycle with LLM_PROVIDER=mock). Requires real credentials,
+# ROBINHOOD_LIVE_TRADING_ACK=true, and pip install -r requirements-optional.txt.
+# See docs/agents/multi-broker.md.
+
 
 @unittest.skipUnless(
     os.getenv("ROBINHOOD_USERNAME")

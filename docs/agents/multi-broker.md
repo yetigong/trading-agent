@@ -109,6 +109,8 @@ pip install -r requirements-optional.txt
 
 **Live integration smoke test (local only):**
 
+> **TODO:** Live Robinhood E2E has not been verified in CI or by maintainers yet. The tests below are scaffolded and skip without credentials; run locally when ready.
+
 ```bash
 export ROBINHOOD_USERNAME=...
 export ROBINHOOD_PASSWORD=...
@@ -156,6 +158,13 @@ Because Robinhood has no paper mode:
 2. **E2E paper cycles** — keep `BROKER_PROVIDER=alpaca` with paper keys
 3. **Backtest** — `BacktestBroker` in [`trading_agent/backtest/broker.py`](../../trading_agent/backtest/broker.py)
 4. **Live Robinhood** — integration tests only, with explicit ack env vars
+
+### Robinhood E2E checklist (TODO)
+
+- [ ] Level 1: `test_account_and_positions_smoke` passes with live credentials
+- [ ] Level 2: `run_account_history.py` succeeds with `BROKER_PROVIDER=robinhood`
+- [ ] Level 3 (optional): order smoke with `ROBINHOOD_PLACE_TEST_ORDER=true`
+- [ ] Level 4: `run_agent.py` with `LLM_PROVIDER=mock` reads Robinhood portfolio in cycle
 
 ## Future: Agentic Trading MCP
 
