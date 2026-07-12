@@ -75,6 +75,21 @@ You do **not** need a bullet per file. Combine related edits into one line.
 
 ---
 
+## Test requirements (every PR)
+
+Every PR must meet these bars before merge. Doc-only PRs may skip runtime checks but must say so in the Test plan.
+
+| Requirement | What to do |
+|-------------|------------|
+| Unit / mock suite green | Run `bash scripts/run_tests.sh` (or `.venv/bin/bash scripts/run_tests.sh`) locally; CI `test` job must pass |
+| Coverage for changed logic | New or changed business logic has unit or mock-based tests under `tests/` that catch regressions |
+| No root-level throwaways | No `test_*.py` at repo root; no committed ad-hoc debug scripts |
+| Mocks for CI | Prefer `MockLLMClient` / `MockAlpacaTradingClient` / provider mocks so CI needs no API keys |
+| Live APIs when relevant | If you changed Alpaca, LLM, Finnhub, or FMP clients, run `RUN_INTEGRATION=1 bash scripts/run_tests.sh` locally and confirm those tests were **not** skipped |
+| Secrets / artifacts | Do not commit `.env`, credentials, `data/`, or `logs/` cycle artifacts |
+
+Main components in a changed flow (orchestrator, execution, signals, strategies, etc.) should have **some** dedicated or end-to-end mock coverage — not 100% line coverage, but enough to catch correctness regressions.
+
 ## Test plan (required)
 
 Checklist of what you ran or what reviewers should run. Be specific:
@@ -82,13 +97,19 @@ Checklist of what you ran or what reviewers should run. Be specific:
 ```markdown
 ## Test plan
 
-- [x] `.venv/bin/bash scripts/run_tests.sh`
-- [x] (if touching LLM/Alpaca) confirm `tests/integration/` tests ran, not skipped
-- [x] `.venv/bin/python scripts/verify_gemini_setup.py`
-- [x] `.venv/bin/python run_agent.py` — cycle completes with `Status: success`
+- [x] `bash scripts/run_tests.sh`
+- [x] (if touching LLM/Alpaca/Finnhub/FMP) `RUN_INTEGRATION=1 bash scripts/run_tests.sh` — integration tests ran, not skipped
+- [x] New/changed logic covered under `tests/`
+- [x] (optional) Manual smoke: `python run_agent.py` — cycle `Status: success`
 ```
 
-For doc-only PRs, say so explicitly.
+For doc-only PRs:
+
+```markdown
+## Test plan
+
+- [x] Docs only — no code/runtime changes; `bash scripts/run_tests.sh` not required
+```
 
 ---
 

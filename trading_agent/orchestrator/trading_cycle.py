@@ -68,6 +68,7 @@ class TradingCycle:
             llm_client=self.llm_client,
             market_data_provider=self.market_data_provider,
             alpaca_client=self.alpaca_client,
+            write_artifact=True,
         )
 
     def execute(self):

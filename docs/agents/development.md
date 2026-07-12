@@ -96,6 +96,17 @@ Or:
 
 Unit tests in `tests/` use mock LLM/Alpaca and do not require API keys. Live integration tests in `tests/integration/` run when keys are present.
 
+### Per-PR expectations
+
+Before opening or merging a PR:
+
+- Unit / mock suite must pass (`scripts/run_tests.sh` and CI `test`)
+- Changed logic should have regression coverage under `tests/` (main components of the flow, not 100% coverage)
+- No root-level `test_*.py` or committed throwaways
+- Provider changes: run integration tests locally and confirm they were not skipped
+
+Full checklist: [pr-description.md](pr-description.md#test-requirements-every-pr).
+
 ## Coding conventions
 
 - **Python 3.9+** compatible
@@ -120,7 +131,7 @@ When changing market signal providers or indicators, update [`market-signals.md`
 ## Git / PR workflow
 
 - Branch from `main`; keep PRs focused
-- Follow [pr-description.md](pr-description.md) for PR body format
+- Follow [pr-description.md](pr-description.md) for PR body format **and** the [per-PR test requirements](pr-description.md#test-requirements-every-pr)
 - Do not commit `.env`, credentials, `data/`, or `logs/` cycle artifacts
 - Run tests before pushing — `.venv/bin/bash scripts/run_tests.sh`
 

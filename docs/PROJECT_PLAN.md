@@ -124,7 +124,7 @@ flowchart TD
 | **Phase 1.6** — Account history mode | **Done** | Read-only snapshot + equity history; `run_account_history.py`; monthly aggregation |
 | **Phase 2** — Richer market context | **Done** | RSI/MACD, sector ETFs, Finnhub news, FMP fundamentals in prompts |
 | **Phase 3** — Backtesting | **Done** | Historical replay via TradingAgent; benchmarks; `run_backtest.py`; per-provider cache |
-| **Phase 4** — Multi-agent architecture | Planned | Analyzer, strategizer, executor, logger, learner |
+| **Phase 4** — Multi-agent architecture | **Done** | Analyzer, strategizer, executor, logger, learner; `trading_agent/agents/` + coordinator |
 | **Phase 5** — Multi-broker | Planned | `BrokerClient` abstraction beyond Alpaca |
 | **Phase 6** — Data persistence | Planned | DB for prefs, history, confirmations, knowledge base |
 | **Phase 7** — Manageability UX | Planned | Console for agents, LLM config, activity and history |
@@ -271,6 +271,15 @@ flowchart TD
 - Per-agent prompts isolated under e.g. `trading_agent/agents/`
 - End-to-end paper cycle through all five agents
 
+### Delivered
+
+- **`trading_agent/agents/`** — ABC, messages, registry, `CycleCoordinator`
+- **Wrappers** — Market Analyzer (`SignalAggregator` + `AnalysisRunner`), Strategizer (strategy + rebalancer), Trade Executor agent (preparer + executor), Decision Logger (`CycleResult` + optional artifact), Learner (file KB)
+- **Knowledge base** — `data.example/knowledge_base.json` → `data/knowledge_base.json`
+- **Compat** — `TradingAgent.run_trading_cycle` delegates to coordinator (backtests unchanged)
+- **Tests** — `tests/test_multi_agent.py`; existing cycle integration still green
+- **Docs** — `docs/agents/multi-agent.md`
+
 ---
 
 ## Phase 5: Multi-Broker Support
@@ -377,7 +386,7 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 2. ~~Phase 2~~ — richer market context ✓
 3. ~~Phase 1 follow-ups~~ — pre-trade validation, dedupe ✓
 4. ~~Phase 3~~ — backtesting ✓
-5. **Phase 4** — multi-agent architecture (core platform evolution)
+5. ~~**Phase 4** — multi-agent architecture~~ ✓
 6. **Phase 5** — multi-broker (when Trade Executor needs more than Alpaca)
 7. **Phase 6** — data persistence (before UX and multi-user)
 8. **Phase 7** — manageability UX
@@ -398,7 +407,8 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 | Cycle wrapper | `trading_agent/orchestrator/trading_cycle.py` |
 | Account history mode | `trading_agent/orchestrator/account_history.py` |
 | Account history fetcher | `trading_agent/account/` |
-| Core orchestrator | `trading_agent/orchestrator/agent.py` (`TradingAgent`) |
+| Core orchestrator | `trading_agent/orchestrator/agent.py` (`TradingAgent` facade) |
+| Multi-agent package | `trading_agent/agents/` |
 | Backtest engine | `trading_agent/backtest/` |
 | Historical market data | `trading_agent/market_data/alpaca_historical.py`, `finnhub_historical.py` |
 | Config | `trading_agent/config.py` |
@@ -409,4 +419,3 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 | Broker | `trading_agent/broker/` |
 | Tests | `tests/` |
 | Agent docs | `docs/agents/` |
-| Future multi-agent package | `trading_agent/agents/` (Phase 4) |
