@@ -183,7 +183,7 @@ class BacktestEngine:
                     market_data_provider=market,
                     news_provider=news,
                     fundamentals_provider=MockFundamentalsProvider(metrics={}),
-                    alpaca_client=broker,
+                    broker_client=broker,
                     universe_symbols=symbols,
                 )
 

@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import List
 
+from trading_agent.broker.base import BrokerClient
+from trading_agent.domain.broker import BrokerOrder, OrderStatus
 from trading_agent.domain.portfolio.portfolio_snapshot import (
     AccountSummary,
     OpenOrder,
@@ -11,34 +13,40 @@ from trading_agent.domain.portfolio.portfolio_snapshot import (
 
 logger = logging.getLogger(__name__)
 
+_OPEN_STATUSES = {
+    OrderStatus.OPEN,
+    OrderStatus.NEW,
+    OrderStatus.ACCEPTED,
+    OrderStatus.PENDING_NEW,
+    OrderStatus.PARTIALLY_FILLED,
+}
+
 
 class PortfolioSnapshotBuilder:
     """Build a rich portfolio snapshot from a broker client."""
 
-    def build(self, broker_client: Any) -> PortfolioSnapshot:
+    def build(self, broker_client: BrokerClient) -> PortfolioSnapshot:
         account = broker_client.get_account()
         positions = broker_client.get_positions()
         open_orders = self._get_open_orders(broker_client)
 
         account_summary = AccountSummary(
-            portfolio_value=float(getattr(account, "portfolio_value", 0)),
-            cash=float(getattr(account, "cash", 0)),
-            buying_power=float(getattr(account, "buying_power", getattr(account, "cash", 0))),
-            equity=float(getattr(account, "equity", getattr(account, "portfolio_value", 0))),
+            portfolio_value=float(account.portfolio_value),
+            cash=float(account.cash),
+            buying_power=float(account.buying_power or account.cash),
+            equity=float(account.equity or account.portfolio_value),
         )
 
         position_models: List[Position] = []
         for pos in positions:
-            qty = float(getattr(pos, "qty", 0))
-            available = float(getattr(pos, "qty_available", getattr(pos, "available_qty", qty)))
             position_models.append(
                 Position(
-                    symbol=str(getattr(pos, "symbol", "")),
-                    qty=qty,
-                    available_qty=available,
-                    market_value=float(getattr(pos, "market_value", 0)),
-                    current_price=float(getattr(pos, "current_price", 0)),
-                    avg_entry_price=float(getattr(pos, "avg_entry_price", 0)),
+                    symbol=pos.symbol,
+                    qty=float(pos.qty),
+                    available_qty=float(pos.available_qty or pos.qty),
+                    market_value=float(pos.market_value),
+                    current_price=float(pos.current_price),
+                    avg_entry_price=float(pos.avg_entry_price),
                 )
             )
 
@@ -49,10 +57,7 @@ class PortfolioSnapshotBuilder:
             timestamp=datetime.now(),
         )
 
-    def _get_open_orders(self, broker_client: Any) -> List[OpenOrder]:
-        if not hasattr(broker_client, "get_orders"):
-            return []
-
+    def _get_open_orders(self, broker_client: BrokerClient) -> List[OpenOrder]:
         try:
             orders = broker_client.get_orders()
         except Exception as exc:
@@ -61,18 +66,19 @@ class PortfolioSnapshotBuilder:
 
         open_orders: List[OpenOrder] = []
         for order in orders or []:
-            status = str(getattr(order, "status", "")).lower()
-            if status not in {"new", "accepted", "pending_new", "partially_filled", "open"}:
+            if not self._is_open_order(order):
                 continue
-            side = getattr(order, "side", "")
-            side_value = getattr(side, "value", str(side)).lower()
             open_orders.append(
                 OpenOrder(
-                    order_id=str(getattr(order, "id", "")),
-                    symbol=str(getattr(order, "symbol", "")),
-                    side=side_value,
-                    qty=float(getattr(order, "qty", 0)),
-                    status=status,
+                    order_id=order.order_id,
+                    symbol=order.symbol,
+                    side=order.side.value,
+                    qty=float(order.qty),
+                    status=order.status.value,
                 )
             )
         return open_orders
+
+    @staticmethod
+    def _is_open_order(order: BrokerOrder) -> bool:
+        return order.status in _OPEN_STATUSES

@@ -31,7 +31,10 @@ See **[account-history.md](account-history.md)** for CLI usage and module layout
 ```mermaid
 flowchart TB
     subgraph broker [trading_agent/broker]
-        AC[AlpacaTradingClient]
+        FACTORY[build_broker_client]
+        AC[AlpacaBrokerClient]
+        RH[RobinhoodBrokerClient]
+        MOCK[MockBrokerClient]
     end
 
     subgraph orchestrator [trading_agent/orchestrator]
@@ -137,9 +140,12 @@ trading-agent/
 | `AnalysisRunner` | `trading_agent/analysis/runner.py` | runs all three per cycle |
 | `TradingStrategy` | `trading_agent/strategies/base.py` | general |
 | `TradePreparer` | `trading_agent/execution/preparer.py` | consolidate + validate |
-| `BrokerClient` | `trading_agent/broker/base.py` | Protocol for broker surface |
-| `AlpacaTradingClient` | `trading_agent/broker/alpaca_client.py` | live; `get_portfolio_history()` |
-| `MockAlpacaTradingClient` | `trading_agent/broker/mock_client.py` | test double |
+| `BrokerClient` | `trading_agent/broker/base.py` | Protocol; typed domain returns |
+| `build_broker_client()` | `trading_agent/broker/factory.py` | alpaca, robinhood, mock |
+| `AlpacaBrokerClient` | `trading_agent/broker/alpaca_client.py` | live/paper; `get_portfolio_history()` |
+| `RobinhoodBrokerClient` | `trading_agent/broker/robinhood_client.py` | optional live (unofficial API) |
+| `MockBrokerClient` | `trading_agent/broker/mock_client.py` | CI test double |
+| `BrokerageConfig` | `domain/user/brokerage_config.py` | `data/brokerage_config.json` |
 | `AccountHistoryFetcher` | `trading_agent/account/history_fetcher.py` | snapshot + equity history from broker |
 
 ## Extension points
@@ -156,3 +162,4 @@ trading-agent/
 | Backtesting | `trading_agent/backtest/`, `run_backtest.py`; see [backtesting.md](backtesting.md) |
 | Prompt formatting | `trading_agent/formatters/` |
 | Decision JSON schema | `trading_agent/models.py`, `GeneralTradingStrategy` |
+| New broker | `trading_agent/broker/` + `build_broker_client()`; see [multi-broker.md](multi-broker.md) |

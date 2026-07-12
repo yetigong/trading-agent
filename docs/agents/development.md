@@ -8,7 +8,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 cp -r data.example data
-# Edit .env with Alpaca paper keys, OPENAI_API_KEY (primary), and GOOGLE_API_KEY (Gemini fallback)
+# Edit .env with BROKER_PROVIDER=alpaca, Alpaca paper keys, OPENAI_API_KEY (primary), and GOOGLE_API_KEY (Gemini fallback)
 # Edit data/*.json for preferences, strategy params, sectors, watchlist
 # Optional for richer market signals (Phase 2): FINNHUB_API_KEY, FMP_API_KEY
 ```
@@ -27,6 +27,7 @@ Runtime configuration lives in `data/` (gitignored). Templates are committed und
 | `rebalance_params.json` | Target allocation, rebalance threshold |
 | `signal_config.json` | Sector ETFs to track, enabled signal sources |
 | `watchlist.json` | Symbols of interest (wired into signal universe / backtest `--symbols` fallback) |
+| `brokerage_config.json` | Broker provider default (`alpaca`, `robinhood`, `mock`) |
 
 On first load each store seeds from `data.example/` if the file is missing. Override the directory with `DATA_DIR` (useful in tests).
 
@@ -50,7 +51,7 @@ Do not commit `data/` — only edit locally. API keys and LLM provider settings 
 .venv/bin/python trading_service.py
 ```
 
-**Account snapshot and equity history (read-only, Alpaca keys only):**
+**Account snapshot and equity history (read-only; uses configured broker):**
 
 ```bash
 # Last month
@@ -97,7 +98,16 @@ Or:
 .venv/bin/python -m unittest discover tests -v
 ```
 
-Unit tests in `tests/` use mock LLM/Alpaca and do not require API keys. Live integration tests in `tests/integration/` run when keys are present.
+Unit tests in `tests/` use mock LLM/broker clients and do not require API keys. Live integration tests in `tests/integration/` run when keys are present.
+
+**Optional Robinhood broker** (live only, unofficial API):
+
+```bash
+pip install -r requirements-optional.txt
+# Set ROBINHOOD_* vars and ROBINHOOD_LIVE_TRADING_ACK=true — see multi-broker.md
+```
+
+See **[multi-broker.md](multi-broker.md)** for broker architecture, env vars, and risks.
 
 ### Per-PR expectations
 

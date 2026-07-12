@@ -13,6 +13,7 @@ This repository includes documentation for AI coding agents working in the codeb
 | [Market signals](docs/agents/market-signals.md) | Phase 2 signal providers, env keys, extension guide |
 | [Backtesting](docs/agents/backtesting.md) | Phase 3 historical replay, benchmarks, CLI |
 | [Multi-agent](docs/agents/multi-agent.md) | Phase 4 agents, coordinator, knowledge base |
+| [Multi-broker](docs/agents/multi-broker.md) | Phase 5 broker abstraction, Robinhood optional adapter |
 | [PR descriptions](docs/agents/pr-description.md) | How to write pull request summaries |
 | [Project plan](docs/PROJECT_PLAN.md) | Roadmap and phase status |
 

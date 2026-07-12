@@ -51,6 +51,11 @@ class TestTradingCycleDataLoading(unittest.TestCase):
                 "enabled_sources": ["market_data", "technical"],
             },
             "watchlist.json": {"symbols": ["TSLA"]},
+            "brokerage_config.json": {
+                "provider": "alpaca",
+                "paper_mode": True,
+                "account_label": "default",
+            },
         }
         for name, payload in files.items():
             (self.example_dir / name).write_text(json.dumps(payload), encoding="utf-8")
@@ -65,10 +70,10 @@ class TestTradingCycleDataLoading(unittest.TestCase):
         self.assertEqual(cycle.watchlist.symbols, ["TSLA"])
 
     @patch("trading_agent.orchestrator.trading_cycle.AlpacaMarketDataProvider")
-    @patch("trading_agent.orchestrator.trading_cycle.AlpacaTradingClient")
+    @patch("trading_agent.orchestrator.trading_cycle.build_broker_client")
     @patch("trading_agent.orchestrator.trading_cycle.build_llm_client")
     def test_initialize_components_passes_preferences_and_sectors(
-        self, mock_llm, mock_alpaca, mock_market
+        self, mock_llm, mock_broker, mock_market
     ):
         cycle = TradingCycle()
         cycle.initialize_components()
@@ -78,6 +83,7 @@ class TestTradingCycleDataLoading(unittest.TestCase):
         self.assertEqual(cycle.agent.user_preferences.max_position_size, 0.05)
         self.assertEqual(cycle.agent.universe_symbols, ["TSLA"])
         mock_llm.assert_called_once()
+        mock_broker.assert_called_once()
 
 
 if __name__ == "__main__":

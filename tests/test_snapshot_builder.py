@@ -1,39 +1,44 @@
 import unittest
 
-from trading_agent.broker.mock_client import MockAlpacaTradingClient
+from trading_agent.broker.base import BrokerClient
+from trading_agent.broker.mock_client import MockBrokerClient
+from trading_agent.domain.broker import BrokerAccount, BrokerPosition, PortfolioHistory
 from trading_agent.execution.snapshot_builder import PortfolioSnapshotBuilder
 
 
 class _BrokerWithoutOrders:
-    """Minimal broker stub that has no get_orders method."""
+    """Minimal broker stub without open orders."""
 
-    def get_account(self):
-        return type(
-            "Account",
-            (),
-            {
-                "portfolio_value": 100000.0,
-                "cash": 50000.0,
-                "buying_power": 50000.0,
-                "equity": 100000.0,
-            },
-        )()
+    provider_name = "stub"
+
+    def get_account(self) -> BrokerAccount:
+        return BrokerAccount(
+            portfolio_value=100000.0,
+            cash=50000.0,
+            buying_power=50000.0,
+            equity=100000.0,
+        )
 
     def get_positions(self):
         return [
-            type(
-                "Position",
-                (),
-                {
-                    "symbol": "AAPL",
-                    "qty": 5,
-                    "qty_available": 4,
-                    "market_value": 1000.0,
-                    "current_price": 200.0,
-                    "avg_entry_price": 180.0,
-                },
-            )()
+            BrokerPosition(
+                symbol="AAPL",
+                qty=5,
+                available_qty=4,
+                market_value=1000.0,
+                current_price=200.0,
+                avg_entry_price=180.0,
+            )
         ]
+
+    def get_orders(self):
+        return []
+
+    def place_market_order(self, symbol, qty, side):
+        raise NotImplementedError
+
+    def get_portfolio_history(self, **kwargs) -> PortfolioHistory:
+        return PortfolioHistory()
 
 
 class TestPortfolioSnapshotBuilder(unittest.TestCase):
@@ -41,7 +46,7 @@ class TestPortfolioSnapshotBuilder(unittest.TestCase):
         self.builder = PortfolioSnapshotBuilder()
 
     def test_build_maps_account_and_positions(self):
-        broker = MockAlpacaTradingClient()
+        broker = MockBrokerClient()
         snapshot = self.builder.build(broker)
 
         self.assertEqual(snapshot.account.portfolio_value, 100000.0)
@@ -59,11 +64,11 @@ class TestPortfolioSnapshotBuilder(unittest.TestCase):
         self.assertEqual(snapshot.positions[0].avg_entry_price, 180.0)
 
     def test_filters_open_orders_by_status(self):
-        broker = MockAlpacaTradingClient()
+        broker = MockBrokerClient()
         broker.orders = [
-            {"id": "1", "symbol": "AAPL", "side": "buy", "qty": 1, "status": "new"},
-            {"id": "2", "symbol": "MSFT", "side": "sell", "qty": 2, "status": "filled"},
-            {"id": "3", "symbol": "GOOG", "side": "buy", "qty": 3, "status": "accepted"},
+            {"id": "1", "symbol": "AAPL", "side": "BUY", "qty": 1, "status": "new"},
+            {"id": "2", "symbol": "MSFT", "side": "SELL", "qty": 2, "status": "filled"},
+            {"id": "3", "symbol": "GOOG", "side": "BUY", "qty": 3, "status": "accepted"},
         ]
         snapshot = self.builder.build(broker)
 

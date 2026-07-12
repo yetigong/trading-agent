@@ -125,7 +125,7 @@ flowchart TD
 | **Phase 2** — Richer market context | **Done** | RSI/MACD, sector ETFs, Finnhub news, FMP fundamentals in prompts |
 | **Phase 3** — Backtesting | **Done** | Historical replay via TradingAgent; benchmarks; `run_backtest.py`; per-provider cache |
 | **Phase 4** — Multi-agent architecture | **Done** | Analyzer, strategizer, executor, logger, learner; `trading_agent/agents/` + coordinator |
-| **Phase 5** — Multi-broker | Planned | `BrokerClient` abstraction beyond Alpaca |
+| **Phase 5** — Multi-broker | **Done** | `BrokerClient` + Alpaca, Robinhood (optional), mock |
 | **Phase 6** — Data persistence | Planned | DB for prefs, history, confirmations, knowledge base |
 | **Phase 7** — Manageability UX | Planned | Console for agents, LLM config, activity and history |
 | **Phase 8** — Sign up & authentication | Planned | Registration, sign-in, user-scoped experience |
@@ -284,12 +284,14 @@ flowchart TD
 
 ## Phase 5: Multi-Broker Support
 
-**Goal:** Abstract broker behind an interface; Alpaca is one implementation. Used by **Trade Executor**.
+**Status: Done** — see [multi-broker.md](agents/multi-broker.md).
 
-- Introduce `BrokerClient` ABC (`get_account`, `get_positions`, `place_market_order`, …)
-- Refactor `trading_agent/broker/alpaca_client.py` to implement it; keep `mock_client.py` as test double
-- Add a second broker only when there is a concrete use case (IB, Schwab, etc.)
-- Executor agent selects broker from user/config without changing strategizer or analyzer
+- `BrokerClient` protocol returns typed domain models (`BrokerAccount`, `BrokerPosition`, …)
+- `build_broker_client()` factory; `BROKER_PROVIDER` env + `data/brokerage_config.json`
+- `AlpacaBrokerClient` (default, paper via `ALPACA_PAPER`), `MockBrokerClient`, optional `RobinhoodBrokerClient`
+- Pipeline wired via `broker_client` injection; market data remains Alpaca-decoupled
+
+**TODO (follow-up):** Live Robinhood E2E verification — run `tests/integration/test_robinhood_live.py`, `run_account_history.py`, and `run_agent.py` with `BROKER_PROVIDER=robinhood` against a real account (no paper mode). See [multi-broker.md](agents/multi-broker.md).
 
 ---
 

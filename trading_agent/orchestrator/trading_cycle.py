@@ -4,7 +4,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from trading_agent.broker.alpaca_client import AlpacaTradingClient
+from trading_agent.broker.factory import build_broker_client
 from trading_agent.config import config_summary, get_config
 from trading_agent.llm.client import build_llm_client
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
@@ -12,6 +12,7 @@ from trading_agent.models import trade_result_detail
 from trading_agent.orchestrator.agent import TradingAgent
 from trading_agent.storage import (
     AnalysisConfigStore,
+    BrokerageConfigStore,
     PreferencesStore,
     RebalanceConfigStore,
     SignalConfigStore,
@@ -29,6 +30,7 @@ class TradingCycle:
         self.config = get_config()
 
         self.preferences_store = PreferencesStore()
+        self.brokerage_config_store = BrokerageConfigStore()
         self.analysis_config_store = AnalysisConfigStore()
         self.strategy_config_store = StrategyConfigStore()
         self.rebalance_config_store = RebalanceConfigStore()
@@ -36,6 +38,7 @@ class TradingCycle:
         self.watchlist_store = WatchlistStore()
 
         self.user_preferences = self.preferences_store.load_preferences()
+        self.brokerage_config = self.brokerage_config_store.load_config()
         self.analysis_params = self.analysis_config_store.load()
         self.strategy_params = self.strategy_config_store.load()
         self.rebalance_params = self.rebalance_config_store.load()
@@ -61,8 +64,11 @@ class TradingCycle:
             sector_etfs=self.signal_config.sector_etfs,
         )
 
-        self.logger.info("Initializing Alpaca client...")
-        self.alpaca_client = AlpacaTradingClient()
+        self.logger.info("Initializing broker client (%s)...", self.config.broker_provider)
+        self.broker_client = build_broker_client(
+            config=self.config,
+            brokerage_config=self.brokerage_config,
+        )
 
         self.logger.info("Creating trading agent...")
         self.agent = TradingAgent(
@@ -71,7 +77,7 @@ class TradingCycle:
             max_position_size=self.user_preferences.max_position_size,
             llm_client=self.llm_client,
             market_data_provider=self.market_data_provider,
-            alpaca_client=self.alpaca_client,
+            broker_client=self.broker_client,
             universe_symbols=list(self.watchlist.symbols or []),
             write_artifact=True,
         )

@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from trading_agent.domain.broker import OrderSide
+
 from trading_agent.backtest.benchmarks import run_benchmarks
 from trading_agent.backtest.broker import BacktestBroker
 from trading_agent.backtest.metrics import compute_metrics, max_drawdown, total_return
@@ -22,21 +24,21 @@ class TestBacktestBroker(unittest.TestCase):
 
         broker = BacktestBroker(initial_cash=10_000, price_fn=price_fn)
         broker.set_as_of_date(date(2024, 1, 2))
-        broker.place_market_order("AAPL", 10, "BUY")
+        broker.place_market_order("AAPL", 10, OrderSide.BUY)
         self.assertAlmostEqual(broker.cash, 9000.0)
         self.assertEqual(len(broker.get_positions()), 1)
         prices["AAPL"] = 110.0
         equity = broker.mark_to_market()
         self.assertAlmostEqual(equity, 9000 + 1100)
 
-        broker.place_market_order("AAPL", 10, "SELL")
+        broker.place_market_order("AAPL", 10, OrderSide.SELL)
         self.assertAlmostEqual(broker.cash, 10100.0)
         self.assertEqual(len(broker.get_positions()), 0)
 
     def test_insufficient_funds(self):
         broker = BacktestBroker(initial_cash=100, price_fn=lambda s: 50.0)
         with self.assertRaises(Exception):
-            broker.place_market_order("AAPL", 10, "BUY")
+            broker.place_market_order("AAPL", 10, OrderSide.BUY)
 
 
 class TestMetrics(unittest.TestCase):

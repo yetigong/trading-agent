@@ -5,9 +5,21 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
+from trading_agent.domain.broker import (
+    BrokerAccount,
+    BrokerError,
+    BrokerOrderResult,
+    BrokerPosition,
+    OrderSide,
+    OrderStatus,
+    PortfolioHistory,
+)
+
 
 class BacktestBroker:
     """In-memory broker that fills market orders at the current day's close."""
+
+    provider_name = "backtest"
 
     def __init__(
         self,
@@ -71,49 +83,37 @@ class BacktestBroker:
     def equity(self) -> float:
         return float(getattr(self, "_equity", self.cash))
 
-    def get_account(self) -> Any:
+    def get_account(self) -> BrokerAccount:
         self.mark_to_market()
-        return type(
-            "Account",
-            (),
-            {
-                "id": "backtest-account",
-                "account_number": "BT0001",
-                "status": "ACTIVE",
-                "currency": "USD",
-                "portfolio_value": self.equity,
-                "cash": self.cash,
-                "buying_power": self.cash,
-                "equity": self.equity,
-                "last_equity": self.equity,
-                "long_market_value": getattr(self, "_long_market_value", 0.0),
-                "short_market_value": 0.0,
-                "initial_margin": 0.0,
-                "maintenance_margin": 0.0,
-                "multiplier": 1.0,
-            },
-        )()
+        return BrokerAccount(
+            account_id="backtest-account",
+            account_number="BT0001",
+            status="ACTIVE",
+            currency="USD",
+            portfolio_value=self.equity,
+            cash=self.cash,
+            buying_power=self.cash,
+            equity=self.equity,
+            last_equity=self.equity,
+            long_market_value=getattr(self, "_long_market_value", 0.0),
+        )
 
-    def get_positions(self) -> List[Any]:
+    def get_positions(self) -> List[BrokerPosition]:
         self.mark_to_market()
         return [
-            type(
-                "Position",
-                (),
-                {
-                    "symbol": p["symbol"],
-                    "qty": p["qty"],
-                    "qty_available": p["available_qty"],
-                    "market_value": p["market_value"],
-                    "current_price": p["current_price"],
-                    "avg_entry_price": p["avg_entry_price"],
-                },
-            )()
+            BrokerPosition(
+                symbol=p["symbol"],
+                qty=float(p["qty"]),
+                available_qty=float(p["available_qty"]),
+                market_value=float(p["market_value"]),
+                current_price=float(p["current_price"]),
+                avg_entry_price=float(p["avg_entry_price"]),
+            )
             for p in self.positions.values()
             if p["qty"] > 0
         ]
 
-    def get_orders(self) -> List[Any]:
+    def get_orders(self) -> List:
         return []
 
     def get_portfolio_history(
@@ -122,37 +122,40 @@ class BacktestBroker:
         timeframe: Optional[str] = None,
         date_end: Optional[str] = None,
         extended_hours: bool = False,
-    ) -> Any:
+    ) -> PortfolioHistory:
+        del period, date_end, extended_hours
         now = int(datetime.now(tz=timezone.utc).timestamp())
-        return type(
-            "PortfolioHistory",
-            (),
-            {
-                "timestamp": [now],
-                "equity": [self.equity],
-                "profit_loss": [0.0],
-                "profit_loss_pct": [0.0],
-                "base_value": self.initial_cash,
-                "timeframe": timeframe or "1D",
-            },
-        )()
+        return PortfolioHistory(
+            timestamps=[now],
+            equity=[self.equity],
+            profit_loss=[0.0],
+            profit_loss_pct=[0.0],
+            base_value=self.initial_cash,
+            timeframe=timeframe or "1D",
+        )
 
-    def place_market_order(self, symbol: str, qty: int, side: Any) -> Any:
+    def place_market_order(
+        self, symbol: str, qty: int, side: OrderSide
+    ) -> BrokerOrderResult:
         symbol = symbol.upper()
         qty = int(qty)
         if qty <= 0:
             raise ValueError("Order quantity must be positive")
 
-        side_value = getattr(side, "value", str(side)).upper()
         price = self._price(symbol)
         if price is None or price <= 0:
-            raise Exception(f'{{"message": "no price available for {symbol}"}}')
+            raise BrokerError(
+                f"no price available for {symbol}",
+                provider=self.provider_name,
+            )
 
-        if side_value == "BUY":
+        if side == OrderSide.BUY:
             cost = qty * price
             if cost > self.cash + 1e-6:
-                raise Exception(
-                    f'{{"message": "insufficient buying power (requested: {cost}, available: {self.cash})"}}'
+                raise BrokerError(
+                    f"insufficient buying power (requested: {cost}, available: {self.cash})",
+                    provider=self.provider_name,
+                    details={"buying_power": self.cash},
                 )
             self.cash -= cost
             existing = self.positions.get(symbol)
@@ -177,12 +180,14 @@ class BacktestBroker:
                     "current_price": price,
                     "market_value": qty * price,
                 }
-        elif side_value == "SELL":
+        elif side == OrderSide.SELL:
             existing = self.positions.get(symbol)
             available = int(existing["qty"]) if existing else 0
             if available < qty:
-                raise Exception(
-                    f'{{"message": "insufficient qty available for order (requested: {qty}, available: {available})"}}'
+                raise BrokerError(
+                    f"insufficient qty available for order (requested: {qty}, available: {available})",
+                    provider=self.provider_name,
+                    details={"existing_qty": available, "available": available},
                 )
             self.cash += qty * price
             remaining = available - qty
@@ -194,18 +199,25 @@ class BacktestBroker:
                 existing["current_price"] = price
                 existing["market_value"] = remaining * price
         else:
-            raise ValueError(f"Unsupported side: {side_value}")
+            raise ValueError(f"Unsupported side: {side}")
 
         self._order_seq += 1
+        order_id = f"bt_order_{self._order_seq}"
         order = {
-            "id": f"bt_order_{self._order_seq}",
+            "id": order_id,
             "symbol": symbol,
             "qty": qty,
-            "side": side_value,
+            "side": side.value.upper(),
             "status": "filled",
             "filled_at": datetime.combine(self.as_of_date or date.today(), datetime.min.time()),
             "filled_price": price,
         }
         self.orders.append(order)
         self.mark_to_market()
-        return type("Order", (), {"id": order["id"]})()
+        return BrokerOrderResult(
+            order_id=order_id,
+            symbol=symbol,
+            side=side,
+            qty=float(qty),
+            status=OrderStatus.FILLED,
+        )

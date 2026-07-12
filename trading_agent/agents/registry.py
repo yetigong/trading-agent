@@ -2,8 +2,9 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
+from trading_agent.broker.base import BrokerClient
 from trading_agent.agents.base import Agent
 from trading_agent.agents.decision_logger import DecisionLoggerAgent
 from trading_agent.agents.executor import TradeExecutorAgent
@@ -48,9 +49,10 @@ def build_default_registry(
     *,
     llm_client,
     market_data_provider,
-    alpaca_client,
     signal_aggregator: SignalAggregator,
     user_preferences: UserPreferences,
+    broker_client: Optional[BrokerClient] = None,
+    alpaca_client: Optional[BrokerClient] = None,
     analysis_runner: Optional[AnalysisRunner] = None,
     trading_strategy: Optional[GeneralTradingStrategy] = None,
     portfolio_rebalancer: Optional[PortfolioRebalancer] = None,
@@ -69,7 +71,11 @@ def build_default_registry(
     portfolio_rebalancer = portfolio_rebalancer or PortfolioRebalancer(llm_client=llm_client)
     snapshot_builder = snapshot_builder or PortfolioSnapshotBuilder()
     trade_preparer = trade_preparer or TradePreparer()
-    trade_executor = trade_executor or TradeExecutor(alpaca_client)
+    resolved_broker = broker_client or alpaca_client
+    if resolved_broker is None:
+        raise ValueError("broker_client is required")
+
+    trade_executor = trade_executor or TradeExecutor(resolved_broker)
 
     agents: Dict[str, Agent] = {
         "market_analyzer": MarketAnalyzerAgent(
@@ -77,7 +83,7 @@ def build_default_registry(
             analysis_runner=analysis_runner,
             snapshot_builder=snapshot_builder,
             market_data_provider=market_data_provider,
-            alpaca_client=alpaca_client,
+            broker_client=resolved_broker,
             user_preferences=user_preferences,
             knowledge_base=kb,
             enabled="market_analyzer" not in disabled_set,

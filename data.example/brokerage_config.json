@@ -1,0 +1,5 @@
+{
+  "provider": "alpaca",
+  "paper_mode": true,
+  "account_label": "default"
+}

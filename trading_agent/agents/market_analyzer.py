@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
+from trading_agent.broker.base import BrokerClient
 from trading_agent.agents.base import ConfigurableAgent
 from trading_agent.agents.knowledge import KnowledgeBase
 from trading_agent.agents.messages import MarketSummary
@@ -67,8 +68,9 @@ class MarketAnalyzerAgent(ConfigurableAgent):
         analysis_runner: AnalysisRunner,
         snapshot_builder: PortfolioSnapshotBuilder,
         market_data_provider,
-        alpaca_client,
+        broker_client: BrokerClient,
         user_preferences: UserPreferences,
+        alpaca_client: Optional[BrokerClient] = None,
         knowledge_base: Optional[KnowledgeBase] = None,
         enabled: bool = True,
     ):
@@ -77,7 +79,7 @@ class MarketAnalyzerAgent(ConfigurableAgent):
         self.analysis_runner = analysis_runner
         self.snapshot_builder = snapshot_builder
         self.market_data_provider = market_data_provider
-        self.alpaca_client = alpaca_client
+        self.broker_client = broker_client or alpaca_client
         self.user_preferences = user_preferences
         self.knowledge_base = knowledge_base or KnowledgeBase()
 
@@ -92,7 +94,7 @@ class MarketAnalyzerAgent(ConfigurableAgent):
 
         raw_conditions = self.market_data_provider.get_market_conditions()
         market_conditions = self.signal_aggregator.market_conditions_from_dict(raw_conditions)
-        portfolio = self.snapshot_builder.build(self.alpaca_client)
+        portfolio = self.snapshot_builder.build(self.broker_client)
         signals = self.signal_aggregator.collect(market_conditions, portfolio)
         market_analysis = self.analysis_runner.run(
             portfolio=portfolio,
