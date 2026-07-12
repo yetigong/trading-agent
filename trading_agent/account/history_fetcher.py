@@ -4,12 +4,14 @@ from typing import Any, List, Optional
 
 from trading_agent.account.aggregation import aggregate_history
 from trading_agent.account.query_resolver import resolve_history_request
+from trading_agent.broker.base import BrokerClient
 from trading_agent.domain.account.account_history import (
     AccountHistoryPoint,
     AccountHistoryQuery,
     AccountHistoryResult,
     AccountSnapshot,
 )
+from trading_agent.domain.broker import PortfolioHistory
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class AccountHistoryFetcher:
 
     def fetch(
         self,
-        broker_client: Any,
+        broker_client: BrokerClient,
         query: Optional[AccountHistoryQuery] = None,
     ) -> AccountHistoryResult:
         query = query or AccountHistoryQuery()
@@ -63,16 +65,18 @@ class AccountHistoryFetcher:
                 timestamp=timestamp,
             )
 
-    def _parse_history(self, payload: Any) -> tuple[List[AccountHistoryPoint], float, str]:
+    def _parse_history(
+        self, payload: PortfolioHistory
+    ) -> tuple[List[AccountHistoryPoint], float, str]:
         if payload is None:
             return [], 0.0, ""
 
-        timestamps = list(getattr(payload, "timestamp", None) or [])
-        equities = list(getattr(payload, "equity", None) or [])
-        profit_losses = list(getattr(payload, "profit_loss", None) or [])
-        profit_loss_pcts = list(getattr(payload, "profit_loss_pct", None) or [])
-        base_value = float(getattr(payload, "base_value", 0) or 0)
-        timeframe = str(getattr(payload, "timeframe", "") or "")
+        timestamps = list(payload.timestamps or [])
+        equities = list(payload.equity or [])
+        profit_losses = list(payload.profit_loss or [])
+        profit_loss_pcts = list(payload.profit_loss_pct or [])
+        base_value = float(payload.base_value or 0)
+        timeframe = str(payload.timeframe or "")
 
         history: List[AccountHistoryPoint] = []
         for idx, ts in enumerate(timestamps):

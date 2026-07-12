@@ -14,6 +14,8 @@ LLM_API_KEY_ENV = {
     "mock": None,
 }
 
+SUPPORTED_BROKER_PROVIDERS = ("alpaca", "robinhood", "mock")
+
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -23,9 +25,15 @@ class AppConfig:
     llm_fallback_model: str
     llm_max_retries: int
     trading_cycle_interval: int
+    broker_provider: str
     alpaca_api_key: str
     alpaca_secret_key: str
     alpaca_paper: bool
+    robinhood_username: str
+    robinhood_password: str
+    robinhood_mfa_secret: str
+    robinhood_session_path: str
+    robinhood_live_trading_ack: bool
     log_level: str
 
 
@@ -46,9 +54,16 @@ def get_config() -> AppConfig:
         llm_fallback_model=os.getenv("LLM_FALLBACK_MODEL", "financial"),
         llm_max_retries=int(os.getenv("LLM_MAX_RETRIES", "3")),
         trading_cycle_interval=int(os.getenv("TRADING_CYCLE_INTERVAL", "30")),
+        broker_provider=os.getenv("BROKER_PROVIDER", "alpaca").lower(),
         alpaca_api_key=os.getenv("ALPACA_API_KEY", ""),
         alpaca_secret_key=os.getenv("ALPACA_SECRET_KEY", ""),
         alpaca_paper=os.getenv("ALPACA_PAPER", "true").lower() in ("1", "true", "yes"),
+        robinhood_username=os.getenv("ROBINHOOD_USERNAME", ""),
+        robinhood_password=os.getenv("ROBINHOOD_PASSWORD", ""),
+        robinhood_mfa_secret=os.getenv("ROBINHOOD_MFA_SECRET", ""),
+        robinhood_session_path=os.getenv("ROBINHOOD_SESSION_PATH", ""),
+        robinhood_live_trading_ack=os.getenv("ROBINHOOD_LIVE_TRADING_ACK", "").lower()
+        in ("1", "true", "yes"),
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
     )
 
@@ -70,6 +85,39 @@ def validate_alpaca_config(config: AppConfig) -> None:
         )
 
 
+def validate_robinhood_config(config: AppConfig) -> None:
+    """Validate Robinhood credentials and live-trading acknowledgement."""
+    missing: List[str] = []
+
+    if not config.robinhood_username:
+        missing.append("ROBINHOOD_USERNAME")
+    if not config.robinhood_password:
+        missing.append("ROBINHOOD_PASSWORD")
+    if not config.robinhood_live_trading_ack:
+        missing.append("ROBINHOOD_LIVE_TRADING_ACK=true")
+
+    if missing:
+        raise ValueError(
+            "Missing required Robinhood configuration: "
+            + ", ".join(missing)
+            + ". Robinhood has no paper trading; see docs/agents/multi-broker.md."
+        )
+
+
+def validate_broker_config(config: AppConfig) -> None:
+    """Validate credentials for the configured broker provider."""
+    provider = (config.broker_provider or "alpaca").lower()
+    if provider not in SUPPORTED_BROKER_PROVIDERS:
+        raise ValueError(
+            f"Unsupported BROKER_PROVIDER '{provider}'. "
+            f"Supported: {', '.join(SUPPORTED_BROKER_PROVIDERS)}"
+        )
+    if provider == "alpaca":
+        validate_alpaca_config(config)
+    elif provider == "robinhood":
+        validate_robinhood_config(config)
+
+
 def _require_provider_key(provider: str, missing: List[str]) -> None:
     if provider not in LLM_API_KEY_ENV:
         raise ValueError(
@@ -83,7 +131,7 @@ def _require_provider_key(provider: str, missing: List[str]) -> None:
 
 def validate_config(config: AppConfig) -> None:
     """Validate required environment variables for a live paper-trading cycle."""
-    validate_alpaca_config(config)
+    validate_broker_config(config)
     missing: List[str] = []
 
     _require_provider_key(config.llm_provider, missing)
@@ -105,6 +153,7 @@ def config_summary(config: AppConfig) -> Dict[str, object]:
         "llm_fallback_provider": config.llm_fallback_provider,
         "llm_fallback_model": config.llm_fallback_model,
         "llm_max_retries": config.llm_max_retries,
+        "broker_provider": config.broker_provider,
         "alpaca_paper": config.alpaca_paper,
         "trading_cycle_interval": config.trading_cycle_interval,
     }

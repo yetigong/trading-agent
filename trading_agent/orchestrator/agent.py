@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 from trading_agent.agents.coordinator import CycleCoordinator
 from trading_agent.agents.knowledge import KnowledgeBase
 from trading_agent.agents.registry import AgentRegistry, build_default_registry
-from trading_agent.broker.alpaca_client import AlpacaTradingClient
+from trading_agent.broker.factory import build_broker_client
+from trading_agent.broker.base import BrokerClient
 from trading_agent.analysis.runner import AnalysisRunner
 from trading_agent.domain.user.user_preferences import UserPreferences
 from trading_agent.execution import (
@@ -57,6 +58,7 @@ class TradingAgent:
         llm_client: Optional[LLMClient] = None,
         client_type: str = "openai",
         market_data_provider: Optional[MarketDataProvider] = None,
+        broker_client: Optional[BrokerClient] = None,
         alpaca_client: Optional[Any] = None,
         news_provider: Optional[NewsDataProvider] = None,
         fundamentals_provider: Optional[FundamentalDataProvider] = None,
@@ -91,14 +93,14 @@ class TradingAgent:
             self.fundamentals_provider,
             universe_symbols=self.universe_symbols,
         )
-        self.alpaca_client = alpaca_client or AlpacaTradingClient()
+        self.broker_client = broker_client or alpaca_client or build_broker_client()
         self.snapshot_builder = PortfolioSnapshotBuilder()
         self.trade_preparer = TradePreparer(
             validator=TradeValidator(
                 price_lookup=_price_lookup_from_provider(self.market_data_provider),
             )
         )
-        self.trade_executor = TradeExecutor(self.alpaca_client)
+        self.trade_executor = TradeExecutor(self.broker_client)
 
         self.user_preferences = UserPreferences(
             risk_tolerance=risk_tolerance,
@@ -110,7 +112,7 @@ class TradingAgent:
         self.registry = registry or build_default_registry(
             llm_client=self.llm_client,
             market_data_provider=self.market_data_provider,
-            alpaca_client=self.alpaca_client,
+            broker_client=self.broker_client,
             signal_aggregator=self.signal_aggregator,
             user_preferences=self.user_preferences,
             analysis_runner=self.analysis_runner,

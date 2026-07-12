@@ -118,7 +118,7 @@ def format_market_conditions(conditions: Optional[Dict[str, Any]]) -> str:
 
 
 def format_trade_failure(error: Optional[str]) -> str:
-    """Turn Alpaca/API error payloads into a short human-readable message."""
+    """Turn broker/API error payloads into a short human-readable message."""
     if not error:
         return "unknown error"
 
@@ -138,6 +138,8 @@ def format_trade_failure(error: Optional[str]) -> str:
         )
     if "buying_power" in data:
         return f"{message} (buying_power: ${data['buying_power']})"
+    if data.get("provider"):
+        return f"[{data['provider']}] {message}"
     return message
 
 

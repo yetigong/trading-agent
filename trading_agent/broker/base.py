@@ -1,17 +1,31 @@
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import List, Optional, Protocol, runtime_checkable
+
+from trading_agent.domain.broker import (
+    BrokerAccount,
+    BrokerOrder,
+    BrokerOrderResult,
+    BrokerPosition,
+    OrderSide,
+    PortfolioHistory,
+)
 
 
 @runtime_checkable
 class BrokerClient(Protocol):
     """Broker API surface for account state, orders, and portfolio history."""
 
-    def get_account(self) -> Any: ...
+    @property
+    def provider_name(self) -> str: ...
 
-    def get_positions(self) -> Any: ...
+    def get_account(self) -> BrokerAccount: ...
 
-    def get_orders(self) -> Any: ...
+    def get_positions(self) -> List[BrokerPosition]: ...
 
-    def place_market_order(self, symbol: str, qty: int, side: Any) -> Any: ...
+    def get_orders(self) -> List[BrokerOrder]: ...
+
+    def place_market_order(
+        self, symbol: str, qty: int, side: OrderSide
+    ) -> BrokerOrderResult: ...
 
     def get_portfolio_history(
         self,
@@ -19,4 +33,4 @@ class BrokerClient(Protocol):
         timeframe: Optional[str] = None,
         date_end: Optional[str] = None,
         extended_hours: bool = False,
-    ) -> Any: ...
+    ) -> PortfolioHistory: ...

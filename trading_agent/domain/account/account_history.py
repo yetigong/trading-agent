@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+
+from trading_agent.domain.broker import BrokerAccount
 
 
 @dataclass
@@ -33,9 +35,31 @@ class AccountSnapshot:
         return self.equity - self.last_equity
 
     @classmethod
-    def from_broker_account(cls, account: Any, timestamp: Optional[datetime] = None) -> "AccountSnapshot":
+    def from_broker_account(
+        cls,
+        account: Union[BrokerAccount, Any],
+        timestamp: Optional[datetime] = None,
+    ) -> "AccountSnapshot":
+        if isinstance(account, BrokerAccount):
+            return cls(
+                account_id=account.account_id,
+                account_number=account.account_number,
+                status=account.status,
+                currency=account.currency,
+                cash=account.cash,
+                equity=account.equity,
+                portfolio_value=account.portfolio_value,
+                buying_power=account.buying_power,
+                last_equity=account.last_equity,
+                long_market_value=account.long_market_value,
+                short_market_value=account.short_market_value,
+                initial_margin=account.initial_margin,
+                maintenance_margin=account.maintenance_margin,
+                multiplier=account.multiplier,
+                timestamp=timestamp or datetime.now(),
+            )
         return cls(
-            account_id=str(getattr(account, "id", "")),
+            account_id=str(getattr(account, "id", getattr(account, "account_id", ""))),
             account_number=str(getattr(account, "account_number", "")),
             status=str(getattr(account, "status", "")),
             currency=str(getattr(account, "currency", "USD")),

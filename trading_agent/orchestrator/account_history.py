@@ -4,9 +4,9 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-from trading_agent.broker.alpaca_client import AlpacaTradingClient
+from trading_agent.broker.factory import build_broker_client
 from trading_agent.account.history_fetcher import AccountHistoryFetcher
-from trading_agent.config import config_summary, get_config, validate_alpaca_config
+from trading_agent.config import config_summary, get_config, validate_broker_config
 from trading_agent.domain.account.account_history import AccountHistoryQuery
 
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ class AccountHistoryMode:
         self.logger.info("=" * 80)
 
         try:
-            validate_alpaca_config(self.config)
-            broker_client = AlpacaTradingClient()
+            validate_broker_config(self.config)
+            broker_client = build_broker_client(config=self.config)
             result = self.fetcher.fetch(broker_client, self.query)
             payload = result.to_dict()
 
