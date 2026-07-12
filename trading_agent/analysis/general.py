@@ -6,6 +6,7 @@ from trading_agent.domain.portfolio.portfolio_snapshot import PortfolioSnapshot
 from trading_agent.domain.signals.market_conditions import MarketConditions
 from trading_agent.domain.signals.market_signals import MarketSignals
 from trading_agent.domain.user.user_preferences import UserPreferences
+from trading_agent.formatters.knowledge import format_analysis_knowledge_block
 from trading_agent.formatters.market_analysis import format_market_signals
 from trading_agent.formatters.market_conditions import format_market_conditions
 from trading_agent.formatters.portfolio import format_portfolio_snapshot
@@ -51,6 +52,8 @@ class GeneralAnalysisStrategy(AnalysisStrategy):
         - Time Horizon: {analysis_params.get('time_horizon', 'medium-term')}
         - Focus Areas: {analysis_params.get('focus_areas', 'all')}
         - Regions: {analysis_params.get('regions', 'US')}
+
+        {format_analysis_knowledge_block(analysis_params)}
 
         Provide a comprehensive market analysis (no trade orders) in this format:
         1. Market Overview

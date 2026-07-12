@@ -2,6 +2,7 @@ import logging
 from typing import Dict, List
 
 from trading_agent.domain.cycle import StrategyContext, TradingDecision
+from trading_agent.formatters.knowledge import format_strategy_knowledge_block
 from trading_agent.formatters.strategy_context import format_strategy_context
 from trading_agent.llm.client import get_llm_client, LLMClient
 from trading_agent.models import TRADING_DECISIONS_JSON_PROMPT, parse_trading_decisions
@@ -27,6 +28,8 @@ class GeneralTradingStrategy(TradingStrategy):
         - Decision Timeframe: {strategy_params.get('timeframe', 'immediate')}
         - Risk Management: {strategy_params.get('risk_management', 'standard')}
         - Position Sizing: {strategy_params.get('position_sizing', 'dynamic')}
+
+        {format_strategy_knowledge_block(strategy_params)}
 
         Synthesize general, technical, and fundamental analysis above with portfolio
         constraints to produce realistic, executable trades.

@@ -68,6 +68,7 @@ class TradingAgent:
         write_artifact: bool = False,
         log_dir: Optional[Path] = None,
         universe_symbols: Optional[List[str]] = None,
+        disabled: Optional[List[str]] = None,
         **kwargs,
     ):
         load_dotenv()
@@ -124,6 +125,7 @@ class TradingAgent:
             knowledge_base=self.knowledge_base,
             log_dir=log_dir,
             write_artifact=write_artifact,
+            disabled=disabled,
         )
         self.coordinator = coordinator or CycleCoordinator(self.registry)
 

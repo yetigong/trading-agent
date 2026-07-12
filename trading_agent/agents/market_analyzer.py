@@ -85,7 +85,7 @@ class MarketAnalyzerAgent(ConfigurableAgent):
 
     def run(self, ctx: Dict[str, Any]) -> Dict[str, Any]:
         analysis_params = dict(ctx.get("analysis_params") or {})
-        lessons = self.knowledge_base.lessons()
+        lessons = self.knowledge_base.lessons_for_prompt()
         weights = self.knowledge_base.signal_weights()
         if lessons:
             analysis_params["knowledge_lessons"] = lessons

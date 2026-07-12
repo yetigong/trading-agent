@@ -215,6 +215,16 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="ARTIFACT",
         help="Compare two or more saved backtest JSON artifacts",
     )
+    parser.add_argument(
+        "--feedback",
+        nargs="?",
+        const="__latest__",
+        metavar="ARTIFACT",
+        help=(
+            "Run BacktestFeedback on ARTIFACT (or the run just completed). "
+            "Writes KB validations/lessons and may create a pending recommendation."
+        ),
+    )
     return parser
 
 
@@ -232,8 +242,19 @@ def main() -> None:
             raise SystemExit(1)
         return
 
+    # Feedback-only mode against an existing artifact
+    if args.feedback and args.feedback != "__latest__" and not (args.start and args.end):
+        from trading_agent.agents.backtest_feedback import (
+            BacktestFeedbackAgent,
+            format_feedback_banner,
+        )
+
+        result = BacktestFeedbackAgent().reflect_on_artifact(args.feedback)
+        print(format_feedback_banner(result))
+        return
+
     if not args.start or not args.end:
-        parser.error("--start and --end are required unless using --compare")
+        parser.error("--start and --end are required unless using --compare or --feedback ARTIFACT")
 
     try:
         if not args.prefetch_only:
@@ -265,6 +286,16 @@ def main() -> None:
     logger.info("Backtest artifact saved to %s", artifact)
     print_summary(payload)
     print(f"Artifact: {artifact}")
+
+    if args.feedback is not None:
+        from trading_agent.agents.backtest_feedback import (
+            BacktestFeedbackAgent,
+            format_feedback_banner,
+        )
+
+        feedback_path = artifact if args.feedback == "__latest__" else Path(args.feedback)
+        fb = BacktestFeedbackAgent().reflect_on_artifact(feedback_path)
+        print(format_feedback_banner(fb))
 
     if result.status == "failed":
         raise SystemExit(1)

@@ -36,9 +36,20 @@ class TradingStrategizerAgent(ConfigurableAgent):
         rebalance_params = dict(ctx.get("rebalance_params") or {})
         analysis_params = dict(ctx.get("analysis_params") or {})
 
+        # Soft KB prefs first; active config (strategy_params) wins on key conflicts.
         prefs = self.knowledge_base.strategy_preferences()
         if prefs:
             strategy_params = {**prefs, **strategy_params}
+
+        lessons = self.knowledge_base.lessons_for_prompt()
+        if lessons:
+            strategy_params["knowledge_lessons"] = lessons
+
+        validation = self.knowledge_base.active_backtest_validation()
+        if validation:
+            strategy_params["backtest_validation_summary"] = validation.get(
+                "summary"
+            ) or validation.get("id")
 
         universe_symbols = [
             str(s).upper()
