@@ -23,6 +23,8 @@ When making changes, prefer minimal diffs, match existing patterns, and run test
 .venv/bin/bash scripts/run_tests.sh
 ```
 
+When executing **multiple tasks in parallel**, prefer **git worktrees** (one directory per branch) instead of switching branches in a single checkout. See [Parallel work: prefer git worktrees](docs/agents/development.md#parallel-work-prefer-git-worktrees) for create/setup/cleanup commands.
+
 ## Per-PR test requirements
 
 Every PR (except explicitly doc-only) must:
