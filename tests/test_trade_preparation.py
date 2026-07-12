@@ -3,6 +3,7 @@ import unittest
 from trading_agent.domain.cycle import TradingDecision
 from trading_agent.domain.portfolio.portfolio_snapshot import (
     AccountSummary,
+    OpenOrder,
     PortfolioSnapshot,
     Position,
 )
@@ -80,6 +81,34 @@ class TestTradeValidator(unittest.TestCase):
         result = self.validator.validate(decisions, self.portfolio)
         self.assertEqual(result.executable[0].action, "SELL")
         self.assertEqual(result.executable[1].action, "BUY")
+
+    def test_skip_wash_trade_with_open_opposite_order(self):
+        portfolio = PortfolioSnapshot(
+            account=self.portfolio.account,
+            positions=self.portfolio.positions,
+            open_orders=[
+                OpenOrder(order_id="ord-1", symbol="CRM", side="sell", qty=1, status="open"),
+            ],
+        )
+        decisions = [TradingDecision("BUY", "CRM", 1, source="strategy")]
+        result = self.validator.validate(decisions, portfolio)
+        self.assertEqual(len(result.executable), 0)
+        self.assertEqual(len(result.skipped), 1)
+        self.assertIn("wash trade", result.skipped[0].reason.lower())
+
+    def test_skip_buy_all(self):
+        decisions = [TradingDecision("BUY", "CRM", "ALL", source="strategy")]
+        result = self.validator.validate(decisions, self.portfolio)
+        self.assertEqual(len(result.executable), 0)
+        self.assertEqual(len(result.skipped), 1)
+        self.assertIn("ALL", result.skipped[0].reason)
+
+    def test_resolve_sell_all_to_available(self):
+        decisions = [TradingDecision("SELL", "CRM", "ALL", source="strategy")]
+        result = self.validator.validate(decisions, self.portfolio)
+        self.assertEqual(len(result.executable), 1)
+        self.assertEqual(result.executable[0].quantity, 3)
+        self.assertEqual(result.executable[0].action, "SELL")
 
 
 if __name__ == "__main__":

@@ -56,6 +56,21 @@ class TestTradingCycleIntegration(unittest.TestCase):
         self.assertTrue(results["hold"])
         self.assertEqual(len(results["executed_trades"]), 0)
 
+    def test_fails_when_all_analysis_strategies_fail(self):
+        class FailingLLM:
+            def generate_response(self, prompt, context=None):
+                raise RuntimeError("LLM unavailable")
+
+        agent = TradingAgent(
+            llm_client=FailingLLM(),
+            market_data_provider=MockMarketDataProvider(),
+            alpaca_client=MockAlpacaTradingClient(),
+        )
+
+        results = agent.run_trading_cycle()
+        self.assertEqual(results["status"], "failed")
+        self.assertIn("analysis", results["error"].lower())
+
 
 if __name__ == "__main__":
     unittest.main()
