@@ -1,11 +1,16 @@
-from typing import List, Union
+from typing import Callable, List, Optional, Union
 
 from trading_agent.domain.cycle import AdjustedTrade, SkippedTrade, TradePreparationResult, TradingDecision
 from trading_agent.domain.portfolio.portfolio_snapshot import PortfolioSnapshot
 
+PriceLookup = Callable[[str], Optional[float]]
+
 
 class TradeValidator:
     """Validate and clip trading decisions against portfolio constraints."""
+
+    def __init__(self, price_lookup: Optional[PriceLookup] = None):
+        self.price_lookup = price_lookup
 
     def validate(
         self,
@@ -13,9 +18,9 @@ class TradeValidator:
         portfolio: PortfolioSnapshot,
         user_preferences=None,
     ) -> TradePreparationResult:
-        max_position_size = 0.1
+        max_position_size = 0.25
         if user_preferences is not None:
-            max_position_size = getattr(user_preferences, "max_position_size", 0.1)
+            max_position_size = getattr(user_preferences, "max_position_size", 0.25)
 
         executable: List[TradingDecision] = []
         adjusted: List[AdjustedTrade] = []
@@ -135,7 +140,7 @@ class TradeValidator:
 
         price = self._estimate_price(decision.symbol, portfolio)
         if price <= 0:
-            return decision
+            return None
 
         buying_power = portfolio.account.buying_power
         if buying_power <= 0:
@@ -151,8 +156,10 @@ class TradeValidator:
         current_value = position.market_value if position else 0.0
         remaining_notional = max(0.0, max_notional - current_value)
         max_shares_by_size = int(remaining_notional // price) if remaining_notional > 0 else 0
+        if max_shares_by_size <= 0:
+            return None
 
-        final_qty = min(requested, affordable, max_shares_by_size or affordable)
+        final_qty = min(requested, affordable, max_shares_by_size)
         if final_qty <= 0:
             return None
 
@@ -176,6 +183,13 @@ class TradeValidator:
         position = portfolio.position_for(symbol)
         if position and position.current_price > 0:
             return position.current_price
+        if self.price_lookup is not None:
+            try:
+                looked_up = self.price_lookup(symbol)
+            except Exception:
+                looked_up = None
+            if looked_up is not None and looked_up > 0:
+                return float(looked_up)
         return 0.0
 
     def _skip_reason(self, decision: TradingDecision, portfolio: PortfolioSnapshot) -> str:
@@ -186,4 +200,14 @@ class TradeValidator:
             return "Invalid sell quantity"
         if portfolio.account.buying_power <= 0:
             return "Insufficient buying power"
+        price = self._estimate_price(decision.symbol, portfolio)
+        if price <= 0:
+            return "No price available for symbol"
+        position = portfolio.position_for(decision.symbol)
+        current_value = position.market_value if position else 0.0
+        max_position_size = 0.1
+        # Message only — actual limit already applied in _validate_buy
+        portfolio_value = portfolio.account.portfolio_value or portfolio.account.equity
+        if portfolio_value and current_value >= portfolio_value * max_position_size:
+            return "Already at max position size"
         return "Invalid buy quantity"

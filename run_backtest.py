@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional
 from trading_agent.backtest.comparison import compare_runs, format_comparison
 from trading_agent.backtest.engine import BacktestEngine, ensure_historical_data
 from trading_agent.backtest.models import BacktestConfig
+from trading_agent.backtest.status import equity_deployment, last_trade_date, summarize_cycles
 from trading_agent.config import config_summary, get_config, validate_config
 from trading_agent.models import serialize_for_json
 from trading_agent.storage import (
@@ -87,6 +88,10 @@ def build_config_from_stores(args) -> BacktestConfig:
         signal_config=signal_config,
         llm_provider=app_config.llm_provider,
         llm_model=app_config.llm_model,
+        llm_fallback_provider=app_config.llm_fallback_provider,
+        llm_fallback_model=app_config.llm_fallback_model,
+        llm_max_retries=app_config.llm_max_retries,
+        llm_pause_seconds=args.llm_pause_seconds,
     )
 
 
@@ -105,31 +110,68 @@ def print_summary(run_dict: Dict[str, Any]) -> None:
     print("\n" + "=" * 72)
     print("BACKTEST SUMMARY")
     print("=" * 72)
-    print(f"Status: {run_dict.get('status')}")
+    status = run_dict.get("status")
+    print(f"Status: {status}")
     print(f"Run ID: {run_dict.get('run_id')}")
-    if run_dict.get("status") != "success":
+    if status == "failed" and run_dict.get("error"):
         print(f"Error: {run_dict.get('error')}")
+
+    config = run_dict.get("config") or {}
+    cycle_stats = config.get("cycle_stats") or summarize_cycles(
+        run_dict.get("cycle_summaries") or []
+    )
+    deployment = config.get("deployment") or equity_deployment(
+        run_dict.get("equity_curve") or []
+    )
+    trade_date = config.get("last_trade_date") or last_trade_date(
+        run_dict.get("trade_log") or []
+    )
+
+    if cycle_stats.get("cycles_total"):
+        print(
+            f"Cycles: {cycle_stats.get('cycles_ok', 0)}/"
+            f"{cycle_stats.get('cycles_total', 0)} succeeded "
+            f"({float(cycle_stats.get('cycle_success_rate') or 0) * 100:.0f}%)"
+        )
+    else:
+        print(f"Cycles: {len(run_dict.get('cycle_summaries') or [])}")
+
+    if trade_date:
+        print(f"Last trade date: {trade_date}")
+    if deployment.get("cash_pct") is not None:
+        print(
+            f"End cash: {_pct(deployment.get('cash_pct'))} "
+            f"(invested {_pct(deployment.get('invested_pct'))})"
+        )
+
+    if status == "failed" and not (run_dict.get("metrics") or {}):
+        for note in run_dict.get("notes") or []:
+            print(f"Note: {note}")
+        print("=" * 72)
         return
 
     metrics = run_dict.get("metrics") or {}
-    print(f"Strategy: {metrics.get('name')}")
-    print(f"Total return: {_pct(metrics.get('total_return'))}")
-    print(f"CAGR: {_pct(metrics.get('cagr'))}")
-    print(f"Max drawdown: {_pct(metrics.get('max_drawdown'))}")
-    print(f"Sharpe: {_num(metrics.get('sharpe'))}")
-    print(f"Alpha vs SPY: {_pct(metrics.get('alpha_vs_spy'))}")
-    print(f"Trades: {metrics.get('trade_count', 0)}")
-    print(f"Cycles: {len(run_dict.get('cycle_summaries') or [])}")
+    if metrics:
+        print(f"Strategy: {metrics.get('name')}")
+        print(f"Total return: {_pct(metrics.get('total_return'))}")
+        print(f"CAGR: {_pct(metrics.get('cagr'))}")
+        print(f"Max drawdown: {_pct(metrics.get('max_drawdown'))}")
+        print(f"Sharpe: {_num(metrics.get('sharpe'))}")
+        print(f"Alpha vs SPY: {_pct(metrics.get('alpha_vs_spy'))}")
+        print(f"Trades: {metrics.get('trade_count', 0)}")
 
-    print("\nBenchmarks:")
-    print(f"  {'Name':<22} {'Return':>10} {'MaxDD':>10} {'Sharpe':>10}")
-    for bench in run_dict.get("benchmarks") or []:
-        print(
-            f"  {str(bench.get('name')):<22} "
-            f"{_pct(bench.get('total_return')):>10} "
-            f"{_pct(bench.get('max_drawdown')):>10} "
-            f"{_num(bench.get('sharpe')):>10}"
-        )
+    if status in ("success", "degraded") and (run_dict.get("benchmarks") or []):
+        if status == "degraded":
+            print("\nWARNING: Run is degraded — do not treat benchmark comparison as authoritative.")
+        print("\nBenchmarks:")
+        print(f"  {'Name':<22} {'Return':>10} {'MaxDD':>10} {'Sharpe':>10}")
+        for bench in run_dict.get("benchmarks") or []:
+            print(
+                f"  {str(bench.get('name')):<22} "
+                f"{_pct(bench.get('total_return')):>10} "
+                f"{_pct(bench.get('max_drawdown')):>10} "
+                f"{_num(bench.get('sharpe')):>10}"
+            )
     for note in run_dict.get("notes") or []:
         print(f"Note: {note}")
     print("=" * 72)
@@ -158,6 +200,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-label", default="default", help="Label stored in the artifact")
     parser.add_argument("--refresh", action="store_true", help="Refresh historical caches")
     parser.add_argument("--prefetch-only", action="store_true", help="Only prefetch historical data")
+    parser.add_argument(
+        "--llm-pause-seconds",
+        type=float,
+        default=0.0,
+        help="Sleep between LLM rebalance cycles to reduce rate-limit pressure",
+    )
     parser.add_argument("--override-strategy", help="JSON object merged into strategy params")
     parser.add_argument("--override-analysis", help="JSON object merged into analysis params")
     parser.add_argument("--override-preferences", help="JSON object merged into preferences")
@@ -180,6 +228,8 @@ def main() -> None:
     if args.compare:
         comparison = compare_runs(args.compare)
         print(format_comparison(comparison))
+        if comparison.get("warnings"):
+            raise SystemExit(1)
         return
 
     if not args.start or not args.end:
@@ -216,7 +266,7 @@ def main() -> None:
     print_summary(payload)
     print(f"Artifact: {artifact}")
 
-    if result.status != "success":
+    if result.status == "failed":
         raise SystemExit(1)
 
 

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from trading_agent.broker.alpaca_client import AlpacaTradingClient
 from trading_agent.config import config_summary, get_config
-from trading_agent.llm.client import get_llm_client
+from trading_agent.llm.client import build_llm_client
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from trading_agent.models import trade_result_detail
 from trading_agent.orchestrator.agent import TradingAgent
@@ -46,10 +46,14 @@ class TradingCycle:
         self.logger.info("Initializing components...")
         self.logger.info("Config: %s", json.dumps(config_summary(self.config)))
 
-        self.logger.info("Initializing LLM client (%s)...", self.config.llm_provider)
-        self.llm_client = get_llm_client(
-            self.config.llm_provider,
+        self.logger.info("Initializing LLM client (%s, fallback=%s)...",
+                         self.config.llm_provider, self.config.llm_fallback_provider)
+        self.llm_client = build_llm_client(
+            provider=self.config.llm_provider,
             model=self.config.llm_model,
+            fallback_provider=self.config.llm_fallback_provider,
+            fallback_model=self.config.llm_fallback_model,
+            max_retries=self.config.llm_max_retries,
         )
 
         self.logger.info("Initializing market data provider...")
@@ -68,6 +72,7 @@ class TradingCycle:
             llm_client=self.llm_client,
             market_data_provider=self.market_data_provider,
             alpaca_client=self.alpaca_client,
+            universe_symbols=list(self.watchlist.symbols or []),
             write_artifact=True,
         )
 

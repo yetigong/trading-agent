@@ -53,20 +53,10 @@ class ClaudeClient(LLMClient):
                 model=self.model,
                 max_tokens=1024,
                 temperature=0.7,
-                system="""You are a trading assistant that provides specific trading decisions in a structured format.
-For each decision, you must provide:
-1. Action (BUY/SELL)
-2. Symbol
-3. Quantity
-4. Reasoning
-5. Risk Level (low/medium/high)
-
-Each decision must be formatted exactly as shown above, with the numbers and colons. For example:
-1. Action: BUY
-2. Symbol: AAPL
-3. Quantity: 10
-4. Reasoning: Strong fundamentals and growth potential
-5. Risk Level: medium""",
+                system=(
+                    "You are a trading assistant. Follow the user's schema exactly. "
+                    "When asked for JSON, respond with JSON only (no markdown fences)."
+                ),
                 messages=[
                     {
                         "role": "user",

@@ -146,7 +146,7 @@ trading-agent/
 
 | Task | Where to change |
 |------|-----------------|
-| New LLM provider | `trading_agent/llm/` + `get_llm_client()` |
+| New LLM provider | `trading_agent/llm/` + `get_llm_client()` / `build_llm_client()` (failover) |
 | New analysis strategy | `trading_agent/analysis/` + register in `AnalysisRunner` |
 | New data/signal source | `trading_agent/market_data/` + `SignalAggregator`; see [market-signals.md](market-signals.md) |
 | Pre-trade rules | `trading_agent/execution/validator.py` |

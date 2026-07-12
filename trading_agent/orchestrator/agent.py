@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 
@@ -17,13 +17,14 @@ from trading_agent.execution import (
     TradeExecutor,
     TradePreparer,
 )
+from trading_agent.execution.validator import TradeValidator
 from trading_agent.market_data.alpaca_provider import AlpacaMarketDataProvider
 from trading_agent.market_data.base import MarketDataProvider
 from trading_agent.market_data.finnhub_provider import FinnhubNewsProvider
 from trading_agent.market_data.fmp_provider import FMPFundamentalsProvider
 from trading_agent.market_data.fundamentals_base import FundamentalDataProvider
 from trading_agent.market_data.news_base import NewsDataProvider
-from trading_agent.llm.client import get_llm_client, LLMClient
+from trading_agent.llm.client import LLMClient, build_llm_client, get_llm_client
 from trading_agent.portfolio.rebalancer import PortfolioRebalancer
 from trading_agent.signals.aggregator import SignalAggregator
 from trading_agent.strategies.general import GeneralTradingStrategy
@@ -31,12 +32,28 @@ from trading_agent.strategies.general import GeneralTradingStrategy
 logger = logging.getLogger(__name__)
 
 
+def _price_lookup_from_provider(provider: MarketDataProvider):
+    def lookup(symbol: str) -> Optional[float]:
+        if hasattr(provider, "get_close_price"):
+            price = provider.get_close_price(symbol)
+            if price is not None and price > 0:
+                return float(price)
+        bars = provider.get_bars(symbol, days=5)
+        if bars is not None and not bars.empty and "close" in bars.columns:
+            value = bars["close"].iloc[-1]
+            if value is not None and float(value) > 0:
+                return float(value)
+        return None
+
+    return lookup
+
+
 class TradingAgent:
     def __init__(
         self,
         risk_tolerance: str = "moderate",
         investment_goal: str = "growth",
-        max_position_size: float = 0.1,
+        max_position_size: float = 0.25,
         llm_client: Optional[LLMClient] = None,
         client_type: str = "openai",
         market_data_provider: Optional[MarketDataProvider] = None,
@@ -48,25 +65,39 @@ class TradingAgent:
         knowledge_base: Optional[KnowledgeBase] = None,
         write_artifact: bool = False,
         log_dir: Optional[Path] = None,
+        universe_symbols: Optional[List[str]] = None,
         **kwargs,
     ):
         load_dotenv()
 
-        self.llm_client = llm_client or get_llm_client(client_type, **kwargs)
+        if llm_client is not None:
+            self.llm_client = llm_client
+        elif kwargs:
+            # Explicit constructor kwargs (e.g. model=) → single provider
+            self.llm_client = get_llm_client(client_type, **kwargs)
+        else:
+            self.llm_client = build_llm_client(provider=client_type)
+
         self.analysis_runner = AnalysisRunner(llm_client=self.llm_client)
         self.trading_strategy = GeneralTradingStrategy(llm_client=self.llm_client)
         self.portfolio_rebalancer = PortfolioRebalancer(llm_client=self.llm_client)
         self.market_data_provider = market_data_provider or AlpacaMarketDataProvider()
         self.news_provider = news_provider or FinnhubNewsProvider()
         self.fundamentals_provider = fundamentals_provider or FMPFundamentalsProvider()
+        self.universe_symbols = [s.upper() for s in (universe_symbols or [])]
         self.signal_aggregator = SignalAggregator(
             self.market_data_provider,
             self.news_provider,
             self.fundamentals_provider,
+            universe_symbols=self.universe_symbols,
         )
         self.alpaca_client = alpaca_client or AlpacaTradingClient()
         self.snapshot_builder = PortfolioSnapshotBuilder()
-        self.trade_preparer = TradePreparer()
+        self.trade_preparer = TradePreparer(
+            validator=TradeValidator(
+                price_lookup=_price_lookup_from_provider(self.market_data_provider),
+            )
+        )
         self.trade_executor = TradeExecutor(self.alpaca_client)
 
         self.user_preferences = UserPreferences(

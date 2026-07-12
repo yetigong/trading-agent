@@ -6,15 +6,16 @@ from .base import LLMClient
 class GeminiClient(LLMClient):
     """Google's Gemini API client implementation."""
 
-    # Default model — gemini-2.0-flash was shut down June 2026; use a current model.
-    DEFAULT_MODEL = "gemini-3.1-flash-lite-preview"
+    # Default: gemini-3.5-flash (thinking/reasoning). Lite stays on the "small" alias.
+    DEFAULT_MODEL = "gemini-3.5-flash"
 
     AVAILABLE_MODELS = {
-        "general": "gemini-3.1-flash-lite-preview",
-        "financial": "gemini-3.1-flash-lite-preview",
+        "general": "gemini-3.5-flash",
+        "financial": "gemini-3.5-flash",
+        "reasoning": "gemini-3.5-flash",
         "code": "gemini-3.5-flash",
         "small": "gemini-3.1-flash-lite-preview",
-        "large": "gemini-3.5-flash",
+        "large": "gemini-3.1-pro-preview",
     }
     
     def __init__(self, model: str = None, api_key: str = None):
@@ -48,30 +49,13 @@ class GeminiClient(LLMClient):
             # Format the prompt with context if provided
             formatted_prompt = self._format_prompt(prompt, context)
             
-            # Add system message for trading decisions
-            system_message = """You are a trading assistant that provides specific trading decisions in a structured format.
-For each decision, you must provide:
-1. Action (BUY/SELL)
-2. Symbol
-3. Quantity
-4. Reasoning
-5. Risk Level (low/medium/high)
-
-Each decision must be formatted exactly as shown above, with the numbers and colons. For example:
-1. Action: BUY
-2. Symbol: AAPL
-3. Quantity: 10
-4. Reasoning: Strong fundamentals and growth potential
-5. Risk Level: medium
-
-Now, based on the following information, provide your trading decisions:
-
-"""
-            
-            # Combine system message and prompt
+            # Keep system guidance JSON-compatible with strategy/analysis prompts.
+            system_message = (
+                "You are a trading assistant. Follow the user's schema exactly. "
+                "When asked for JSON, respond with JSON only (no markdown fences).\n\n"
+            )
             full_prompt = system_message + formatted_prompt
-            
-            # Generate response
+
             response = self.client.generate_content(
                 full_prompt,
                 generation_config={
@@ -124,11 +108,12 @@ Task:
     def get_available_models(cls) -> Dict[str, str]:
         """Get a dictionary of available models and their descriptions."""
         return {
-            "general": "Gemini 3.1 Flash Lite Preview: fast, free-tier friendly default",
-            "financial": "Gemini 3.1 Flash Lite Preview: fast, free-tier friendly default",
-            "code": "Gemini 3.5 Flash: higher capability",
-            "small": "Gemini 3.1 Flash Lite Preview",
-            "large": "Gemini 3.5 Flash",
+            "general": "Gemini 3.5 Flash: thinking/reasoning default",
+            "financial": "Gemini 3.5 Flash: thinking/reasoning default",
+            "reasoning": "Gemini 3.5 Flash: thinking/reasoning",
+            "code": "Gemini 3.5 Flash",
+            "small": "Gemini 3.1 Flash Lite Preview: fast/cheap",
+            "large": "Gemini 3.1 Pro Preview: strongest reasoning",
         }
     
     def switch_model(self, model: str) -> None:

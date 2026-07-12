@@ -66,7 +66,7 @@ class TestTradingCycleDataLoading(unittest.TestCase):
 
     @patch("trading_agent.orchestrator.trading_cycle.AlpacaMarketDataProvider")
     @patch("trading_agent.orchestrator.trading_cycle.AlpacaTradingClient")
-    @patch("trading_agent.orchestrator.trading_cycle.get_llm_client")
+    @patch("trading_agent.orchestrator.trading_cycle.build_llm_client")
     def test_initialize_components_passes_preferences_and_sectors(
         self, mock_llm, mock_alpaca, mock_market
     ):
@@ -76,6 +76,8 @@ class TestTradingCycleDataLoading(unittest.TestCase):
         mock_market.assert_called_once_with(sector_etfs=["XLK", "XLF"])
         self.assertEqual(cycle.agent.user_preferences.risk_tolerance, "conservative")
         self.assertEqual(cycle.agent.user_preferences.max_position_size, 0.05)
+        self.assertEqual(cycle.agent.universe_symbols, ["TSLA"])
+        mock_llm.assert_called_once()
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 cp -r data.example data
-# Edit .env with Alpaca paper keys and GOOGLE_API_KEY (or other LLM key)
+# Edit .env with Alpaca paper keys, OPENAI_API_KEY (primary), and GOOGLE_API_KEY (Gemini fallback)
 # Edit data/*.json for preferences, strategy params, sectors, watchlist
 # Optional for richer market signals (Phase 2): FINNHUB_API_KEY, FMP_API_KEY
 ```
@@ -26,7 +26,7 @@ Runtime configuration lives in `data/` (gitignored). Templates are committed und
 | `strategy_params.json` | Trading timeframe, risk management, position sizing |
 | `rebalance_params.json` | Target allocation, rebalance threshold |
 | `signal_config.json` | Sector ETFs to track, enabled signal sources |
-| `watchlist.json` | Symbols of interest (stored for future use) |
+| `watchlist.json` | Symbols of interest (wired into signal universe / backtest `--symbols` fallback) |
 
 On first load each store seeds from `data.example/` if the file is missing. Override the directory with `DATA_DIR` (useful in tests).
 
@@ -65,10 +65,13 @@ See **[account-history.md](account-history.md)** for CLI options and module layo
 **Backtest (Phase 3 — manual historical replay):**
 
 ```bash
-.venv/bin/python run_backtest.py --start 2024-01-01 --end 2024-06-30 --run-label baseline
+.venv/bin/python run_backtest.py \
+  --start 2024-01-01 --end 2024-06-30 \
+  --symbols SPY,QQQ,XLK,XLV,XLE,XLI,XLY,IWM \
+  --run-label baseline
 ```
 
-See **[backtesting.md](backtesting.md)** for prefetch, overrides, and `--compare`.
+See **[backtesting.md](backtesting.md)** for prefetch, OpenAI→Gemini failover, cycle success status, overrides, and `--compare`.
 
 **Verify Gemini API / model:**
 

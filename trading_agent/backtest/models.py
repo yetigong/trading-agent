@@ -65,6 +65,10 @@ class BacktestConfig:
     signal_config: Dict[str, Any] = field(default_factory=dict)
     llm_provider: Optional[str] = None
     llm_model: Optional[str] = None
+    llm_fallback_provider: Optional[str] = None
+    llm_fallback_model: Optional[str] = None
+    llm_max_retries: int = 3
+    llm_pause_seconds: float = 0.0
     alpaca_cache_dir: Optional[str] = None
     finnhub_cache_dir: Optional[str] = None
 
@@ -87,6 +91,10 @@ class BacktestConfig:
             "signal_config": dict(self.signal_config),
             "llm_provider": self.llm_provider,
             "llm_model": self.llm_model,
+            "llm_fallback_provider": self.llm_fallback_provider,
+            "llm_fallback_model": self.llm_fallback_model,
+            "llm_max_retries": self.llm_max_retries,
+            "llm_pause_seconds": self.llm_pause_seconds,
         }
 
 

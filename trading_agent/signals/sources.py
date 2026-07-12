@@ -24,11 +24,34 @@ class SignalCollectionContext:
         cls,
         market_conditions: MarketConditions,
         portfolio: Optional[PortfolioSnapshot] = None,
+        universe_symbols: Optional[List[str]] = None,
     ) -> "SignalCollectionContext":
         symbols: List[str] = []
+        seen = set()
+
         if portfolio:
-            symbols = [p.symbol for p in portfolio.positions[:MAX_SYMBOLS]]
-        return cls(market_conditions=market_conditions, portfolio=portfolio, symbols=symbols)
+            for position in portfolio.positions:
+                symbol = str(position.symbol).upper()
+                if symbol and symbol not in seen:
+                    symbols.append(symbol)
+                    seen.add(symbol)
+                if len(symbols) >= MAX_SYMBOLS:
+                    break
+
+        for raw in universe_symbols or []:
+            symbol = str(raw).upper().strip()
+            if not symbol or symbol in seen:
+                continue
+            symbols.append(symbol)
+            seen.add(symbol)
+            if len(symbols) >= MAX_SYMBOLS:
+                break
+
+        return cls(
+            market_conditions=market_conditions,
+            portfolio=portfolio,
+            symbols=symbols,
+        )
 
 
 def summarize_sector_rotation(sector_etfs: Dict[str, Any]) -> str:
