@@ -4,7 +4,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List
 
 from .news_base import NewsDataProvider
@@ -81,9 +81,16 @@ class FinnhubNewsProvider(NewsDataProvider):
 
         return f"{tone.capitalize()} news tone ({len(headlines)} headlines, {bullish} bullish / {bearish} bearish cues)"
 
-    def _fetch_company_news(self, symbol: str) -> List[Dict[str, Any]]:
-        end = datetime.now().date()
-        start = end - timedelta(days=7)
+    def fetch_company_news(
+        self,
+        symbol: str,
+        start: date,
+        end: date,
+        limit: int = MAX_HEADLINES_PER_SYMBOL,
+    ) -> List[Dict[str, Any]]:
+        """Fetch company news for an explicit date range."""
+        if not self.api_key:
+            return []
         data = self._get_json(
             "company-news",
             symbol=symbol,
@@ -92,7 +99,12 @@ class FinnhubNewsProvider(NewsDataProvider):
         )
         if not isinstance(data, list):
             return []
-        return [self._normalize_headline(item, symbol=symbol) for item in data[:MAX_HEADLINES_PER_SYMBOL]]
+        return [self._normalize_headline(item, symbol=symbol) for item in data[:limit]]
+
+    def _fetch_company_news(self, symbol: str) -> List[Dict[str, Any]]:
+        end = datetime.now().date()
+        start = end - timedelta(days=7)
+        return self.fetch_company_news(symbol, start, end)
 
     def _fetch_general_news(self) -> List[Dict[str, Any]]:
         data = self._get_json("news", category="general")

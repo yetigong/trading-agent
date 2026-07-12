@@ -32,6 +32,8 @@ On first load each store seeds from `data.example/` if the file is missing. Over
 
 FMP API responses are cached under `data/cache/fmp/YYYY-MM-DD/` (calendar-day TTL). See [market-signals.md](market-signals.md).
 
+Historical bars/news for backtests (and other reuse) live under `data/cache/alpaca/` and `data/cache/finnhub/`. See [backtesting.md](backtesting.md).
+
 Do not commit `data/` — only edit locally. API keys and LLM provider settings stay in `.env`.
 
 ## Run locally
@@ -60,6 +62,14 @@ Do not commit `data/` — only edit locally. API keys and LLM provider settings 
 
 See **[account-history.md](account-history.md)** for CLI options and module layout.
 
+**Backtest (Phase 3 — manual historical replay):**
+
+```bash
+.venv/bin/python run_backtest.py --start 2024-01-01 --end 2024-06-30 --run-label baseline
+```
+
+See **[backtesting.md](backtesting.md)** for prefetch, overrides, and `--compare`.
+
 **Verify Gemini API / model:**
 
 ```bash
@@ -70,6 +80,12 @@ See **[account-history.md](account-history.md)** for CLI options and module layo
 
 ```bash
 .venv/bin/bash scripts/run_tests.sh
+```
+
+Live API checks under `tests/integration/` are opt-in:
+
+```bash
+RUN_INTEGRATION=1 .venv/bin/bash scripts/run_tests.sh
 ```
 
 Or:

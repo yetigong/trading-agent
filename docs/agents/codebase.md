@@ -95,11 +95,13 @@ trading-agent/
 │   ├── analysis/             # AnalysisRunner + general/technical/fundamental
 │   ├── strategies/           # GeneralTradingStrategy
 │   ├── portfolio/            # PortfolioRebalancer
-│   ├── market_data/          # Alpaca + Finnhub + FMP + mock providers
+│   ├── market_data/          # Alpaca + Finnhub + FMP + historical caches
 │   ├── signals/              # SignalAggregator, indicators, sources
+│   ├── backtest/             # BacktestEngine, broker, benchmarks, metrics
 │   ├── formatters/           # Domain → LLM prompt text
 │   ├── models.py             # JSON parsing helpers
 │   └── llm/
+├── run_backtest.py           # manual historical backtest CLI
 ├── tests/
 └── docs/
 ```
@@ -150,5 +152,6 @@ trading-agent/
 | Trade consolidation | `trading_agent/execution/consolidator.py` |
 | Cycle orchestration | `trading_agent/orchestrator/agent.py` |
 | Account history mode | `trading_agent/orchestrator/account_history.py`, `run_account_history.py` |
+| Backtesting | `trading_agent/backtest/`, `run_backtest.py`; see [backtesting.md](backtesting.md) |
 | Prompt formatting | `trading_agent/formatters/` |
 | Decision JSON schema | `trading_agent/models.py`, `GeneralTradingStrategy` |

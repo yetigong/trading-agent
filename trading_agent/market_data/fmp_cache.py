@@ -6,6 +6,11 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from trading_agent.market_data.historical_cache import (
+    load_manifest,
+    save_manifest,
+    update_symbol_coverage,
+)
 from trading_agent.storage.paths import get_cache_dir
 
 logger = logging.getLogger(__name__)
@@ -91,3 +96,18 @@ def write_cache(endpoint: str, payload: Any, day: Optional[date] = None, **param
     with path.open("w", encoding="utf-8") as f:
         json.dump(envelope, f, indent=2)
         f.write("\n")
+
+    symbol = params.get("symbol")
+    if symbol:
+        record_symbol_coverage(str(symbol), day)
+
+
+def record_symbol_coverage(symbol: str, day: date) -> None:
+    """Track that FMP data was fetched for symbol on day (TTM, not true PIT)."""
+    cache_dir = get_fmp_cache_dir()
+    manifest = load_manifest(cache_dir)
+    update_symbol_coverage(manifest, symbol, day, day)
+    manifest["note"] = (
+        "FMP stable endpoints are TTM/current — not true point-in-time historical fundamentals."
+    )
+    save_manifest(cache_dir, manifest)
