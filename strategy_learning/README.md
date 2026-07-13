@@ -16,13 +16,13 @@ flowchart LR
 |------|--------------|
 | Knowledge base | Live trading cycles |
 | Param sweep → **recommendations** | Config param files (`data/*.json`) — never write these |
-| Live retrospection triggers (4.5.5) | Market data writes / decision logs |
+| Live retrospection triggers | Market data writes / decision logs |
 
 `trading_agent` **reads** configs at runtime and (via human / future UX) **applies** approved recommendations. This package **proposes** only.
 
 Backtest engines remain under `trading_agent/backtest/`; feedback and sweep invoke them. Deploy (`trading_service.py`) runs **live** mode only — backtest runs must never trigger retrospection (Phase 4.5.2).
 
-## Layout (Phase 4.5.4)
+## Layout (Phase 4.5.5)
 
 ```
 strategy_learning/
@@ -37,13 +37,17 @@ strategy_learning/
 │   ├── models.py
 │   ├── recommend.py
 │   └── runner.py
-├── retrospection/       # Phase 4.5.5 — live underperformance → sweep signal
+├── retrospection/       # Done — 4.5.5 — live underperformance → durable signal
+│   ├── models.py
+│   ├── metrics.py
+│   ├── detector.py
+│   └── signal.py
 └── tests/               # Package unit tests
 ```
 
 Config apply stays in `trading_agent/agents/promotion.py` + `scripts/review_config_recommendation.py`. Live cycle lessons are written by `trading_agent/agents/live_lesson.py` (`LiveLessonAgent`) via this package’s KB API.
 
-Operator sweep CLI: [`run_sweep.py`](../run_sweep.py).
+Operator CLIs: [`run_sweep.py`](../run_sweep.py), [`run_retrospection.py`](../run_retrospection.py).
 
 See [learning-loop.md](../docs/agents/learning-loop.md) and [PROJECT_PLAN.md](../docs/PROJECT_PLAN.md).
 
@@ -55,5 +59,5 @@ See [learning-loop.md](../docs/agents/learning-loop.md) and [PROJECT_PLAN.md](..
 | 4.5.2 | **Done** (in `trading_agent`) — `LiveAgentRun` / `BacktestAgentRun` |
 | 4.5.3 | **Done** — KB + recommendation writes |
 | 4.5.4 | **Done** — Sweep runner (`ParamSweepRunner`, `run_sweep.py`) |
-| 4.5.5 | Retrospection → sweep |
+| 4.5.5 | **Done** — Retrospection → durable signal → `run_retrospection.py` |
 | Phase 11 | Separate deploy / schedule |

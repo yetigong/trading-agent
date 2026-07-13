@@ -46,13 +46,39 @@ class LiveAgentRun:
             rebalance_params=rebalance_params,
         )
 
-    def emit_retrospection_signal(self, **payload: Any) -> None:
-        """Stub for Phase 4.5.5 — live underperformance → strategy_learning."""
-        logger.debug(
-            "LiveAgentRun.emit_retrospection_signal stub (payload keys=%s)",
-            sorted(payload.keys()),
+    def emit_retrospection_signal(self, **payload: Any) -> Optional[str]:
+        """Write a durable retrospection signal for out-of-band sweep (Phase 4.5.5).
+
+        Returns the artifact path, or None when nothing was written.
+        """
+        from strategy_learning.retrospection import (
+            RetrospectionEval,
+            write_retrospection_signal,
         )
-        return None
+
+        eval_result = payload.get("eval")
+        if not isinstance(eval_result, RetrospectionEval):
+            reasons = list(payload.get("reasons") or [])
+            if not reasons and payload.get("reason"):
+                reasons = [str(payload["reason"])]
+            eval_result = RetrospectionEval(
+                triggered=bool(payload.get("triggered", True)),
+                reasons=reasons,
+                metrics=dict(payload.get("metrics") or {}),
+                cycle_id=payload.get("cycle_id"),
+            )
+        if not eval_result.triggered:
+            logger.debug("emit_retrospection_signal skipped (not triggered)")
+            return None
+        path = write_retrospection_signal(
+            eval_result,
+            log_dir=payload.get("log_dir") or "logs",
+            cycle_artifact_path=payload.get("cycle_artifact_path"),
+            user_id=str(payload.get("user_id") or "default"),
+            extra=dict(payload.get("extra") or {}),
+        )
+        logger.info("LiveAgentRun emitted retrospection signal → %s", path)
+        return str(path)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._agent, name)

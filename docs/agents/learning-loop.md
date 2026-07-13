@@ -14,7 +14,7 @@ See also [multi-agent.md](multi-agent.md), [backtesting.md](backtesting.md), [`s
 | **4.5.2** — Live vs Backtest agent-run modes | **Done** |
 | **4.5.3** — KB / data boundary into `strategy_learning` | **Done** |
 | **4.5.4** — Param sweep (sole recommendation path) | **Done** |
-| **4.5.5** — Live retrospection → sweep | Planned |
+| **4.5.5** — Live retrospection → sweep | **Done** |
 | Phase 6 / 7 — DB persistence + UX | Later |
 | Phase 11 — Strategy learning as separate service | Planned |
 
@@ -134,6 +134,13 @@ Updated only by **BacktestFeedback** with capped deltas (±0.1, clamped to [0.5,
 .venv/bin/python run_sweep.py --start 2024-01-01 --end 2024-06-30 --write-kb
 .venv/bin/python run_sweep.py --start 2024-01-01 --end 2024-06-30 --write-kb --max-workers 2
 
+# After a live underperformance trigger (logs/retrospection_*.json):
+.venv/bin/python run_retrospection.py --list
+.venv/bin/python run_retrospection.py --write-kb
+# Or dry-run / explicit path:
+.venv/bin/python run_retrospection.py --dry-run
+.venv/bin/python run_retrospection.py --trigger logs/retrospection_....json --write-kb
+
 # Pending?
 .venv/bin/python scripts/review_config_recommendation.py --status
 
@@ -161,14 +168,18 @@ Promoting on a single window overfits. `--require-validate-window` blocks approv
 
 Sweep may propose only whitelisted discrete steps: `risk_management`, `position_sizing`, `timeframe`, `max_position_size`, rebalance `threshold`, `risk_tolerance`. One pending recommendation at a time (older pending → `superseded`).
 
-## Live underperformance trigger (4.5.5 — planned)
+## Live underperformance trigger (4.5.5)
 
-v1 definition when implemented:
+After each successful live cycle, `TradingCycle` evaluates underperformance and may emit a durable signal (`logs/retrospection_*.json`). Sweep runs **out-of-band** via `run_retrospection.py` — never inside the trading cycle.
 
-- Rolling 30d equity return lags SPY by more than a configured threshold, **or**
-- 3 consecutive successful cycles with `hold=true` while SPY rises over the same span
+v1 trigger rules (either):
 
-Must **not** rewrite `data/*.json`; emit a trigger → sweep → human promote via config-owner path. Only from **live** runs.
+- Rolling **30d** portfolio equity return lags SPY by more than `RETROSPECTION_SPY_LAG_PP` (default **0.05** / 5 pp), **or**
+- **`RETROSPECTION_HOLD_STREAK`** (default **3**) consecutive successful cycles with `hold=true` while SPY rises over that span
+
+Cooldown: skip new triggers while a pending signal exists, or within `RETROSPECTION_COOLDOWN_DAYS` (default **7**) of the last trigger.
+
+Must **not** rewrite `data/*.json`; emit trigger → `run_retrospection.py` → sweep → human promote via config-owner path. Only from **live** runs (`LiveAgentRun.emit_retrospection_signal`). Retrospection failures are logged and never fail the cycle.
 
 ## Audit: lessons on cycle artifacts
 
@@ -185,7 +196,8 @@ Backtest `cycle_summaries[]` include `cycle_id` for lineage into parent `logs/ba
 | `strategy_learning/knowledge/feedback.py` | Score run → validation / soft weights (no hard recs) |
 | `strategy_learning/sweep/` | OAT param sweep → `SweepResult` + hard recommendations |
 | `run_sweep.py` | Operator CLI for param sweep |
-| `strategy_learning/retrospection/` | Placeholder (4.5.5) |
+| `strategy_learning/retrospection/` | Live underperf detector + durable signal I/O |
+| `run_retrospection.py` | Consume retrospection triggers → out-of-band sweep |
 | `trading_agent/orchestrator/agent_run.py` | `LiveAgentRun` / `BacktestAgentRun`; circular-trigger guard |
 | `trading_agent/agents/live_lesson.py` | Live cycle lessons + artifact patch |
 | `trading_agent/agents/promotion.py` | Approve / reject / defer (config-owner side) |
@@ -195,13 +207,20 @@ Backtest `cycle_summaries[]` include `cycle_id` for lineage into parent `logs/ba
 
 ## Tests
 
+**Coverage rule for this flow:** changing retrospection / sweep / KB must update tests for each layer touched (metrics → detector → signal → cycle hook → CLI). See [development.md § Test coverage by flow](development.md#test-coverage-by-flow).
+
 - `strategy_learning/tests/test_scaffold.py` — package exports
 - `strategy_learning/tests/test_knowledge.py` — store / schema / EventRef
 - `strategy_learning/tests/test_feedback.py` — feedback → validation/weights; configs unchanged
 - `strategy_learning/tests/test_boundary.py` — learning must not import config apply paths
 - `strategy_learning/tests/test_sweep_candidates.py` — OAT expansion
 - `strategy_learning/tests/test_sweep_runner.py` — mock sweep → pending rec with EventRef sweep
-- `trading_agent/tests/test_agent_run_modes.py` — Live/Backtest run modes + circular-trigger guard
+- `strategy_learning/tests/test_retrospection_metrics.py` — lag vs SPY, hold-streak
+- `strategy_learning/tests/test_retrospection_detector.py` — trigger / cooldown skips
+- `strategy_learning/tests/test_retrospection_signal.py` — write / consume durable signals
+- `strategy_learning/tests/test_run_retrospection_cli.py` — `--list` / `--dry-run` / consume (mock sweep) + short window
+- `trading_agent/tests/test_retrospection_cycle_hook.py` — `TradingCycle._maybe_emit_retrospection` emit / skip / never-fail
+- `trading_agent/tests/test_agent_run_modes.py` — Live/Backtest run modes + emit / circular-trigger guard
 - `tests/test_learning_prompts.py` — prompt inclusion, live_lesson disabled in backtest, artifact patch
 - `tests/test_learning_loop.py` — promotion reject / walk-forward gate
 
@@ -211,4 +230,5 @@ After CI unit tests are green, confirm once locally (paper / mock as available):
 
 - [ ] Live cycle: `.venv/bin/python run_agent.py` — completes; KB gains a live lesson; configs not silently rewritten
 - [ ] Backtest: `.venv/bin/python run_backtest.py --start … --end …` — completes; `live_lesson` disabled; optional `--feedback` writes KB only
-- [ ] Sweep: `.venv/bin/python run_sweep.py --start … --end … --write-kb` — writes `logs/sweep_*.json`; pending rec only if a candidate beats baseline
+- [ ] Sweep: `.venv/bin/python run_sweep.py --start … --end … --write-kb` — writes `logs/sweep_*.json`; pending rec only if a candidate beats baseline (use a short window for sanity, e.g. ~1 week + few symbols)
+- [ ] Retrospection: after a trigger exists, `.venv/bin/python run_retrospection.py --list` then `--dry-run --start YYYY-MM-DD --end YYYY-MM-DD --symbols AAPL` (short window); optional real consume / `--write-kb` — mock consume is the CI bar

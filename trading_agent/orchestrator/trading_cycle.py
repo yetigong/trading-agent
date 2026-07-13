@@ -1,6 +1,8 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 
@@ -19,6 +21,8 @@ from trading_agent.storage import (
     StrategyConfigStore,
     WatchlistStore,
 )
+
+LOG_DIR = Path("logs")
 
 
 class TradingCycle:
@@ -127,6 +131,8 @@ class TradingCycle:
 
                 for trade in results.get("executed_trades", []):
                     self.logger.info("Executed trade: %s", json.dumps(trade, indent=2))
+
+                self._maybe_emit_retrospection(results)
             else:
                 self.logger.error("Trading cycle failed: %s", results.get("error", "Unknown error"))
 
@@ -188,3 +194,103 @@ class TradingCycle:
             import traceback
             self.logger.error("Traceback: %s", traceback.format_exc())
             raise
+
+    def _maybe_emit_retrospection(self, results: Dict[str, Any]) -> None:
+        """Evaluate live underperformance and emit an out-of-band signal if needed.
+
+        Failures here are logged and never fail the trading cycle.
+        """
+        try:
+            from strategy_learning.retrospection import (
+                RetrospectionDetector,
+                cooldown_active,
+                default_thresholds,
+                has_pending_trigger,
+                load_recent_cycle_summaries,
+            )
+
+            thresholds = default_thresholds()
+            log_dir = LOG_DIR
+            pending = has_pending_trigger(log_dir)
+            cooling = cooldown_active(
+                log_dir,
+                cooldown_days=int(thresholds["cooldown_days"]),
+            )
+            window_days = int(thresholds["window_days"])
+            equity_points = self._portfolio_equity_points(window_days=window_days)
+            spy_closes = self._spy_closes(window_days=window_days)
+            summaries = load_recent_cycle_summaries(log_dir, limit=20)
+            detector = RetrospectionDetector(
+                window_days=window_days,
+                spy_lag_pp=float(thresholds["spy_lag_pp"]),
+                hold_streak=int(thresholds["hold_streak"]),
+            )
+            evaluation = detector.evaluate(
+                equity_points=equity_points,
+                spy_closes=spy_closes,
+                cycle_summaries=summaries,
+                cycle_id=results.get("cycle_id"),
+                cooldown_active=cooling,
+                pending_trigger_exists=pending,
+            )
+            if evaluation.skipped_reason:
+                self.logger.info(
+                    "Retrospection skipped (%s)", evaluation.skipped_reason
+                )
+                return
+            if not evaluation.triggered:
+                self.logger.debug(
+                    "Retrospection not triggered (equity_return=%s spy_return=%s)",
+                    evaluation.metrics.get("equity_return"),
+                    evaluation.metrics.get("spy_return"),
+                )
+                return
+            path = self.agent.emit_retrospection_signal(
+                eval=evaluation,
+                log_dir=str(log_dir),
+                cycle_artifact_path=results.get("artifact_path"),
+            )
+            if path:
+                self.logger.info(
+                    "Retrospection trigger emitted (%s) → %s",
+                    "; ".join(evaluation.reasons),
+                    path,
+                )
+        except Exception as exc:
+            self.logger.warning(
+                "Retrospection evaluation failed (cycle continues): %s", exc
+            )
+
+    def _portfolio_equity_points(self, *, window_days: int = 30) -> List[Dict[str, Any]]:
+        from strategy_learning.retrospection import portfolio_history_period_for_window
+        from trading_agent.domain.broker import PortfolioHistory
+
+        period = portfolio_history_period_for_window(window_days)
+        history = self.broker_client.get_portfolio_history(period=period, timeframe="1D")
+        if not isinstance(history, PortfolioHistory):
+            return []
+        points: List[Dict[str, Any]] = []
+        for idx, ts in enumerate(history.timestamps or []):
+            equity = float(history.equity[idx]) if idx < len(history.equity) else 0.0
+            points.append(
+                {
+                    "timestamp": datetime.fromtimestamp(int(ts), tz=timezone.utc),
+                    "equity": equity,
+                }
+            )
+        return points
+
+    def _spy_closes(self, *, window_days: int = 30) -> List[Dict[str, Any]]:
+        provider = getattr(self, "market_data_provider", None)
+        if provider is None or not hasattr(provider, "get_bars"):
+            return []
+        # Fetch a few extra calendar days so the rolling window has enough bars.
+        bars = provider.get_bars("SPY", days=max(window_days + 5, 35))
+        if bars is None or getattr(bars, "empty", True):
+            return []
+        closes: List[Dict[str, Any]] = []
+        close_col = "close" if "close" in bars.columns else bars.columns[-1]
+        for idx, row in bars.iterrows():
+            ts = idx.to_pydatetime() if hasattr(idx, "to_pydatetime") else idx
+            closes.append({"timestamp": ts, "close": float(row[close_col])})
+        return closes

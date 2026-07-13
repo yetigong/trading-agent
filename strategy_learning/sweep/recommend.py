@@ -20,6 +20,7 @@ def maybe_write_recommendation(
     *,
     artifact_path: Optional[str] = None,
     validate_artifact_path: Optional[str] = None,
+    extra_evidence: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Write a pending recommendation when the winner beats baseline.
 
@@ -76,6 +77,8 @@ def maybe_write_recommendation(
                 user_id=knowledge_base.user_id,
             )
         )
+    if extra_evidence:
+        evidence.extend(dict(ev) for ev in extra_evidence if isinstance(ev, dict))
 
     trigger = make_event_ref(
         event_type="sweep",

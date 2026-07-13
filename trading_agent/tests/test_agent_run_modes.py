@@ -1,10 +1,11 @@
-"""Phase 4.5.2 — LiveAgentRun / BacktestAgentRun mode policy."""
+"""Phase 4.5.2 / 4.5.5 — LiveAgentRun / BacktestAgentRun mode policy."""
 
 import tempfile
 import unittest
 from pathlib import Path
 
 from strategy_learning.knowledge import KnowledgeBase
+from strategy_learning.retrospection import list_trigger_paths, load_trigger
 from trading_agent.broker.mock_client import MockAlpacaTradingClient
 from trading_agent.llm.mock_client import MockLLMClient
 from trading_agent.market_data.mock_fundamentals_provider import MockFundamentalsProvider
@@ -27,8 +28,9 @@ def _temp_kb(tmp: str) -> KnowledgeBase:
 
 
 class TestLiveAgentRun(unittest.TestCase):
-    def test_mode_and_retrospection_stub(self):
+    def test_mode_and_retrospection_emit_writes_signal(self):
         with tempfile.TemporaryDirectory() as tmp:
+            log_dir = Path(tmp) / "logs"
             run = LiveAgentRun(
                 llm_client=MockLLMClient(),
                 market_data_provider=MockMarketDataProvider(),
@@ -39,7 +41,34 @@ class TestLiveAgentRun(unittest.TestCase):
             self.assertEqual(run.mode, AgentRunMode.LIVE)
             self.assertTrue(run.may_trigger_retrospection)
             self.assertTrue(run.agent.registry.get("live_lesson").is_enabled())
-            self.assertIsNone(run.emit_retrospection_signal(reason="underperf"))
+            path = run.emit_retrospection_signal(
+                reasons=["rolling_30d_equity_lags_spy_by_0.09"],
+                metrics={"spy_lag_pp": -0.09},
+                cycle_id="c-live",
+                log_dir=str(log_dir),
+            )
+            self.assertIsNotNone(path)
+            pending = list_trigger_paths(log_dir, status="pending")
+            self.assertEqual(len(pending), 1)
+            trigger = load_trigger(pending[0])
+            self.assertEqual(trigger.cycle_id, "c-live")
+            self.assertIn("lags_spy", trigger.reasons[0])
+
+    def test_emit_skips_when_not_triggered(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = LiveAgentRun(
+                llm_client=MockLLMClient(),
+                market_data_provider=MockMarketDataProvider(),
+                alpaca_client=MockAlpacaTradingClient(),
+                knowledge_base=_temp_kb(tmp),
+                write_artifact=False,
+            )
+            path = run.emit_retrospection_signal(
+                triggered=False,
+                reasons=[],
+                log_dir=str(Path(tmp) / "logs"),
+            )
+            self.assertIsNone(path)
 
     def test_smoke_cycle(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -98,6 +127,18 @@ class TestBacktestAgentRun(unittest.TestCase):
             results = run.run_trading_cycle()
             self.assertEqual(results["status"], "success")
             self.assertEqual(len(kb.load()["lessons"]), 0)
+
+
+class TestTradingCycleDoesNotImportSweep(unittest.TestCase):
+    def test_trading_cycle_source_avoids_param_sweep_runner(self):
+        source = (
+            Path(__file__).resolve().parents[1]
+            / "orchestrator"
+            / "trading_cycle.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("ParamSweepRunner", source)
+        self.assertNotIn("run_sweep", source)
+        self.assertIn("_maybe_emit_retrospection", source)
 
 
 if __name__ == "__main__":

@@ -69,7 +69,7 @@ Use **bullets grouped by behavior**, not by file. Cover the main flows, subsyste
 | `trading_agent/execution/executor.py`, `execute_trades` | Trade execution flow |
 | `trading_agent/models.py`, strategy prompts | LLM decision parsing / prompts |
 | `trading_agent/config.py`, `.env.example` | Configuration |
-| `tests/` | Test coverage (what behavior is now guarded) |
+| `strategy_learning/tests/`, `trading_agent/tests/`, `tests/` | Test coverage (what behavior is now guarded; prefer package-local) |
 
 You do **not** need a bullet per file. Combine related edits into one line.
 
@@ -82,13 +82,13 @@ Every PR must meet these bars before merge. Doc-only PRs may skip runtime checks
 | Requirement | What to do |
 |-------------|------------|
 | Unit / mock suite green | Run `bash scripts/run_tests.sh` (or `.venv/bin/bash scripts/run_tests.sh`) locally; CI `test` job must pass |
-| Coverage for changed logic | New or changed business logic has unit or mock-based tests under `tests/` that catch regressions |
+| Coverage for changed logic | New or changed business logic has unit or mock-based tests under the matching package (`strategy_learning/tests/`, `trading_agent/tests/`, or `tests/` for cross-package). For multi-layer flows, cover each layer touched — see [development.md § Test coverage by flow](development.md#test-coverage-by-flow) |
 | No root-level throwaways | No `test_*.py` at repo root; no committed ad-hoc debug scripts |
 | Mocks for CI | Prefer `MockLLMClient` / `MockAlpacaTradingClient` / provider mocks so CI needs no API keys |
 | Live APIs when relevant | If you changed Alpaca, LLM, Finnhub, or FMP clients, run `RUN_INTEGRATION=1 bash scripts/run_tests.sh` locally and confirm those tests were **not** skipped |
 | Secrets / artifacts | Do not commit `.env`, credentials, `data/`, or `logs/` cycle artifacts |
 
-Main components in a changed flow (orchestrator, execution, signals, strategies, etc.) should have **some** dedicated or end-to-end mock coverage — not 100% line coverage, but enough to catch correctness regressions.
+Main components in a changed flow (orchestrator, execution, signals, strategies, retrospection layers, CLIs, etc.) should have **some** dedicated or end-to-end mock coverage — not 100% line coverage, but enough to catch correctness regressions. Multi-layer flows: cover each layer touched ([development.md](development.md#test-coverage-by-flow)).
 
 ## Test plan (required)
 
@@ -99,8 +99,9 @@ Checklist of what you ran or what reviewers should run. Be specific:
 
 - [x] `bash scripts/run_tests.sh`
 - [x] (if touching LLM/Alpaca/Finnhub/FMP) `RUN_INTEGRATION=1 bash scripts/run_tests.sh` — integration tests ran, not skipped
-- [x] New/changed logic covered under `tests/`
+- [x] New/changed logic covered under package `tests/` (main flow layers; see development.md)
 - [x] (optional) Manual smoke: `python run_agent.py` — cycle `Status: success`
+- [x] (if retrospection/sweep e2e) short `--start`/`--end` + few `--symbols`; prefer `--dry-run` / mocks in CI
 ```
 
 For doc-only PRs:

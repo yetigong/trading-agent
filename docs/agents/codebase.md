@@ -7,7 +7,7 @@ LLM-driven **paper trading** (and optional live brokers) plus **offline strategy
 | Package | Responsibility |
 |---------|----------------|
 | [`trading_agent/`](../../trading_agent/) | Live cycles, brokers, market data, decision logs, **config files**, backtest engine |
-| [`strategy_learning/`](../../strategy_learning/) | Knowledge base, recommendations, sweep, retrospection (KB + sweep Done through 4.5.4; see [learning-loop.md](learning-loop.md)) |
+| [`strategy_learning/`](../../strategy_learning/) | Knowledge base, recommendations, sweep, retrospection (Phase 4.5 Done; see [learning-loop.md](learning-loop.md)) |
 
 `strategy_learning` **proposes** config changes; it does **not** write `data/*.json` params. Humans / future management UX apply approvals into trading_agent-owned configs.
 
@@ -58,7 +58,9 @@ flowchart TB
     BT --> BTRun --> TA
     Cfg -->|"read"| TA
     MD --> TA
-    Retro -.->|"live signal only"| Live
+    Live -->|"emit signal"| Retro
+    Retro -->|"logs/retrospection_*.json"| Consumer[run_retrospection]
+    Consumer --> Sweep
     Sweep -.->|"calls"| BT
     Sweep --> KB
     KB -.->|"soft context"| AG
@@ -98,14 +100,15 @@ trading-agent/
 │   ├── formatters/           # Domain → LLM prompt text
 │   ├── models.py             # JSON parsing helpers
 │   └── llm/
-├── strategy_learning/        # Offline tuning (KB + sweep through 4.5.4)
+├── strategy_learning/        # Offline tuning (KB + sweep + retrospection — Phase 4.5 Done)
 │   ├── knowledge/            # KnowledgeBase, records, BacktestFeedbackAgent
 │   ├── sweep/                # ParamSweepRunner — Done (4.5.4)
-│   ├── retrospection/        # Live underperf trigger — Phase 4.5.5
+│   ├── retrospection/        # Live underperf detector + signal — Done (4.5.5)
 │   └── tests/                # strategy_learning unit tests
 ├── trading_agent/tests/      # trading_agent unit tests
 ├── run_backtest.py           # manual historical backtest CLI
 ├── run_sweep.py              # OAT param sweep CLI (hard recommendations)
+├── run_retrospection.py      # consume live retrospection triggers → sweep
 ├── tests/                    # cross-package + integration/
 └── docs/
 ```
@@ -157,10 +160,22 @@ trading-agent/
 | New data/signal source | `trading_agent/market_data/` + `SignalAggregator`; see [market-signals.md](market-signals.md) |
 | Pre-trade rules | `trading_agent/execution/validator.py` |
 | Trade consolidation | `trading_agent/execution/consolidator.py` |
-| Cycle orchestration | `trading_agent/orchestrator/agent.py`, `agent_run.py` |
+| Cycle orchestration | `trading_agent/orchestrator/agent.py`, `agent_run.py`, `trading_cycle.py` |
+| Live retrospection emit | `TradingCycle._maybe_emit_retrospection` + `LiveAgentRun.emit_retrospection_signal`; detect in `strategy_learning/retrospection/`; consume via `run_retrospection.py` (never in-cycle sweep) |
 | Account history mode | `trading_agent/orchestrator/account_history.py`, `run_account_history.py` |
 | Backtesting | `trading_agent/backtest/`, `run_backtest.py`; see [backtesting.md](backtesting.md) |
-| Strategy learning | `strategy_learning/knowledge/`; see [learning-loop.md](learning-loop.md) |
+| Strategy learning | `strategy_learning/knowledge/`, `sweep/`, `retrospection/`; see [learning-loop.md](learning-loop.md) |
 | Prompt formatting | `trading_agent/formatters/` |
 | Decision JSON schema | `trading_agent/models.py`, `GeneralTradingStrategy` |
 | New broker | `trading_agent/broker/` + `build_broker_client()`; see [multi-broker.md](multi-broker.md) |
+
+## Where tests live
+
+| Location | What belongs there |
+|----------|--------------------|
+| `trading_agent/tests/` | Live cycle, brokers, signals, backtest engine, agent-run modes, retrospection **cycle hook** |
+| `strategy_learning/tests/` | KB, feedback, sweep, retrospection metrics/detector/signal, `run_retrospection` CLI |
+| `tests/` | Cross-package (e.g. learning prompts, promotion) — top-level `test_*.py` only |
+| `tests/integration/` | Live API smoke (opt-in; skip without keys) |
+
+When extending a flow, add coverage at **each layer you change** (logic → hook → CLI). See [Test coverage by flow](development.md#test-coverage-by-flow).

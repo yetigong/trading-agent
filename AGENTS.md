@@ -34,11 +34,13 @@ When executing **multiple tasks in parallel**, prefer **git worktrees** (one dir
 Every PR (except explicitly doc-only) must:
 
 1. Pass `bash scripts/run_tests.sh` / CI `test` job
-2. Add or update package-local test coverage (`strategy_learning/tests/`, `trading_agent/tests/`, or `tests/` for cross-package) for changed business logic (main flow components, not 100% lines)
+2. Add or update package-local test coverage (`strategy_learning/tests/`, `trading_agent/tests/`, or `tests/` for cross-package) for changed business logic (**main flow layers**, not 100% lines)
 3. Keep unit tests mock-based (no API keys required in CI)
 4. Run live `tests/integration/` locally when touching Alpaca / LLM / Finnhub / FMP providers
 5. Leave no root-level `test_*.py` or committed throwaway scripts
 6. Follow [PR description](docs/agents/pr-description.md) including the Test plan checklist
+
+**Main-flow coverage rule:** when changing a multi-layer flow, cover each layer you touch (pure logic → wiring/hook → CLI/entrypoint if present). Do not stop at unit tests for one submodule while leaving the orchestrator or operator CLI untested. See [Test coverage by flow](docs/agents/development.md#test-coverage-by-flow) in the development guide (includes the retrospection checklist).
 
 ## Testing and test hygiene
 
@@ -48,5 +50,6 @@ Every PR (except explicitly doc-only) must:
 - **Ad-hoc debugging** — use `scripts/` or a local untracked file; never commit throwaway tests
 - **Before PR** — run `scripts/run_tests.sh`; if you changed Alpaca or LLM providers, confirm integration tests ran (not skipped) locally
 - **Prefer mocks** — use `MockLLMClient` and `MockAlpacaTradingClient` for CI-safe coverage
+- **Live backtest sanity** — if a manual/e2e check must run a real backtest or sweep, use a **short date window** and few symbols (e.g. `--start`/`--end` spanning a few days, `--symbols AAPL`); prefer mocked `run_backtest` in automated tests
 
-See [development guide](docs/agents/development.md) and [PR descriptions](docs/agents/pr-description.md) for setup and the full PR test checklist.
+See [development guide](docs/agents/development.md#tests) (esp. [coverage by flow](docs/agents/development.md#test-coverage-by-flow)) and [PR descriptions](docs/agents/pr-description.md) for setup and the full PR test checklist.
