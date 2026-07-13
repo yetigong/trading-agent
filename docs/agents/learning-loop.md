@@ -12,11 +12,11 @@ See also [multi-agent.md](multi-agent.md), [backtesting.md](backtesting.md), [`s
 | Phase B — KB schema v2 + backtest feedback + review CLI | **Done** |
 | **4.5.1** — `strategy_learning` scaffold + architecture docs | **Done** |
 | **4.5.2** — Live vs Backtest agent-run modes | **Done** |
-| **4.5.3** — KB / data boundary into `strategy_learning` | Planned |
+| **4.5.3** — KB / data boundary into `strategy_learning` | **Done** |
 | **4.5.4** — Param sweep (sole recommendation path) | Planned |
 | **4.5.5** — Live retrospection → sweep | Planned |
 | Phase 6 / 7 — DB persistence + UX | Later |
-| Phase 11 — strategy learning as separate service | Planned |
+| Phase 11 — Strategy learning as separate service | Planned |
 
 Phase 5 (multi-broker) is **Done** — see [multi-broker.md](multi-broker.md).
 
@@ -51,17 +51,13 @@ flowchart TB
 
 | Data | Owner | Rule |
 |------|-------|------|
-| Knowledge base + recommendations | **`strategy_learning`** (target) | Learning writes; trading_agent reads soft context for prompts |
+| Knowledge base + recommendations | **`strategy_learning`** | Learning writes; trading_agent reads soft context for prompts |
 | Configs | **`trading_agent`** | Runtime reads; apply/approve is config-owner — **not** strategy_learning |
 | Market data / decisions | **`trading_agent`** | strategy_learning reads only |
 
-Today (through 4.5.2) KB / feedback / promotion still live under `trading_agent/agents/`. The [`strategy_learning/`](../../strategy_learning/) package is a scaffold for 4.5.3+.
-
 **Circular-trigger rule (4.5.2 — enforced):** only live runs may invoke retrospection/sweep. Encoded on `LiveAgentRun` / `BacktestAgentRun` in `trading_agent/orchestrator/agent_run.py`. Deploy uses live mode only.
 
-## Architecture (current runtime — A/B)
-
-Still implemented under `trading_agent/agents/` until 4.5.3+ moves KB/recs into `strategy_learning`. Soft context is read by live prompts; hard apply stays config-owner (`data/*.json`).
+## Architecture (runtime — after 4.5.3)
 
 ```mermaid
 flowchart TB
@@ -77,11 +73,11 @@ flowchart TB
         CFG["trading_agent configs"]
     end
 
-    BT["trading_agent BacktestEngine"] -->|"disabled learner"| ART["logs/backtest_*.json"]
-    ART --> FB["BacktestFeedbackAgent"]
-    FB --> KB["knowledge_base.json v2"]
-    LIVE["Live TradingCycle"] --> LR["LearnerAgent"]
-    LR --> KB
+    BT["trading_agent BacktestEngine"] -->|"disabled live_lesson"| ART["logs/backtest_*.json"]
+    ART --> FB["strategy_learning BacktestFeedbackAgent"]
+    FB --> KB["strategy_learning KnowledgeBase"]
+    LIVE["Live TradingCycle"] --> LL["LiveLessonAgent"]
+    LL --> KB
     KB --> soft
     soft --> MA["Analyzer / Strategizer prompts"]
     FB --> CR
@@ -98,8 +94,8 @@ flowchart TB
 
 | | Backtest | Live |
 |--|----------|------|
-| During replay | Learner **disabled** | N/A |
-| After run | `BacktestFeedbackAgent` writes validation + optional recommendation | Per-cycle `LessonRecord` + bias nudge |
+| During replay | `LiveLessonAgent` **disabled** | N/A |
+| After run | `BacktestFeedbackAgent` writes validation + optional recommendation | Per-cycle lesson + bias nudge via `LiveLessonAgent` |
 | Same store | `data/knowledge_base.json` with `source: backtest \| live` | same |
 
 ## Knowledge base schema v2
@@ -122,7 +118,7 @@ Last 5 `source=backtest` + last 5 `source=live` summaries, deduped, max 10 (`les
 
 ### Signal weights
 
-Updated only by **BacktestFeedback** with capped deltas (±0.1, clamped to [0.5, 1.5]) when underperformance vs SPY is detected. Live learner does **not** invent weight updates. If attribution is weak, weights stay near defaults — do not treat empty weights as “learned.”
+Updated only by **BacktestFeedback** with capped deltas (±0.1, clamped to [0.5, 1.5]) when underperformance vs SPY is detected. Live lesson agent does **not** invent weight updates. If attribution is weak, weights stay near defaults — do not treat empty weights as “learned.”
 
 ## Operator workflow
 
@@ -171,7 +167,7 @@ Must **not** rewrite `data/*.json`; emit a trigger → sweep → human promote v
 
 ## Audit: lessons on cycle artifacts
 
-Pipeline order stays logger → learner. Learner **patches** `agents.lessons_update` onto the cycle JSON so EventRefs to `logs/cycle_*.json` include what was learned.
+Pipeline order stays logger → live_lesson. `LiveLessonAgent` **patches** `agents.lessons_update` onto the cycle JSON so EventRefs to `logs/cycle_*.json` include what was learned.
 
 Backtest `cycle_summaries[]` include `cycle_id` for lineage into parent `logs/backtest_*.json`.
 
@@ -179,20 +175,31 @@ Backtest `cycle_summaries[]` include `cycle_id` for lineage into parent `logs/ba
 
 | Module | Role |
 |--------|------|
-| `strategy_learning/` | Package scaffold (4.5.1); KB/sweep/retrospection land in later sub-phases |
-| `trading_agent/orchestrator/agent_run.py` | `LiveAgentRun` / `BacktestAgentRun` (4.5.2); circular-trigger guard |
-| `trading_agent/agents/knowledge.py` | KB v2 load/save/migrate (**current**; moves in 4.5.3) |
-| `trading_agent/agents/kb_records.py` | EventRef, migration, trim, enums |
-| `trading_agent/agents/backtest_feedback.py` | Score run → validation / recommendation |
+| `strategy_learning/knowledge/store.py` | KB v2 load/save/migrate |
+| `strategy_learning/knowledge/records.py` | EventRef, migration, trim, enums |
+| `strategy_learning/knowledge/feedback.py` | Score run → validation / recommendation |
+| `strategy_learning/sweep/` | Placeholder (4.5.4) |
+| `strategy_learning/retrospection/` | Placeholder (4.5.5) |
+| `trading_agent/orchestrator/agent_run.py` | `LiveAgentRun` / `BacktestAgentRun`; circular-trigger guard |
+| `trading_agent/agents/live_lesson.py` | Live cycle lessons + artifact patch |
 | `trading_agent/agents/promotion.py` | Approve / reject / defer (config-owner side) |
-| `trading_agent/agents/learner.py` | Live lessons + artifact patch |
 | `trading_agent/formatters/knowledge.py` | Prompt blocks |
 | `scripts/review_config_recommendation.py` | Operator CLI |
 | `scripts/kb_lineage.py` | Audit chain |
 
 ## Tests
 
-- `tests/test_strategy_learning_scaffold.py` — package importable (4.5.1)
-- `tests/test_agent_run_modes.py` — Live/Backtest run modes + circular-trigger guard (4.5.2)
-- `tests/test_learning_prompts.py` — prompt inclusion, learner disabled in backtest agent, artifact patch
-- `tests/test_learning_loop.py` — v2 migration, EventRef rejects, feedback → pending, walk-forward gate, user_id mismatch
+- `tests/test_strategy_learning_scaffold.py` — package exports
+- `tests/test_strategy_learning_knowledge.py` — store / schema / EventRef
+- `tests/test_strategy_learning_feedback.py` — feedback → pending rec; configs unchanged
+- `tests/test_strategy_learning_boundary.py` — learning must not import config apply paths
+- `tests/test_agent_run_modes.py` — Live/Backtest run modes + circular-trigger guard
+- `tests/test_learning_prompts.py` — prompt inclusion, live_lesson disabled in backtest, artifact patch
+- `tests/test_learning_loop.py` — promotion reject / walk-forward gate
+
+### One-time local verification (PR checklist)
+
+After CI unit tests are green, confirm once locally (paper / mock as available):
+
+- [ ] Live cycle: `.venv/bin/python run_agent.py` — completes; KB gains a live lesson; configs not silently rewritten
+- [ ] Backtest: `.venv/bin/python run_backtest.py --start … --end …` — completes; `live_lesson` disabled; optional `--feedback` writes KB only

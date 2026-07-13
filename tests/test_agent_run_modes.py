@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from trading_agent.agents.knowledge import KnowledgeBase
+from strategy_learning.knowledge import KnowledgeBase
 from trading_agent.broker.mock_client import MockAlpacaTradingClient
 from trading_agent.llm.mock_client import MockLLMClient
 from trading_agent.market_data.mock_fundamentals_provider import MockFundamentalsProvider
@@ -38,7 +38,7 @@ class TestLiveAgentRun(unittest.TestCase):
             )
             self.assertEqual(run.mode, AgentRunMode.LIVE)
             self.assertTrue(run.may_trigger_retrospection)
-            self.assertTrue(run.agent.registry.get("learner").is_enabled())
+            self.assertTrue(run.agent.registry.get("live_lesson").is_enabled())
             self.assertIsNone(run.emit_retrospection_signal(reason="underperf"))
 
     def test_smoke_cycle(self):
@@ -57,7 +57,7 @@ class TestLiveAgentRun(unittest.TestCase):
 
 
 class TestBacktestAgentRun(unittest.TestCase):
-    def test_forces_learner_disabled_and_blocks_retrospection(self):
+    def test_forces_live_lesson_disabled_and_blocks_retrospection(self):
         with tempfile.TemporaryDirectory() as tmp:
             kb = _temp_kb(tmp)
             run = BacktestAgentRun(
@@ -69,12 +69,12 @@ class TestBacktestAgentRun(unittest.TestCase):
             )
             self.assertEqual(run.mode, AgentRunMode.BACKTEST)
             self.assertFalse(run.may_trigger_retrospection)
-            self.assertFalse(run.agent.registry.get("learner").is_enabled())
+            self.assertFalse(run.agent.registry.get("live_lesson").is_enabled())
             with self.assertRaises(RuntimeError) as ctx:
                 run.emit_retrospection_signal(reason="should_fail")
             self.assertIn("must not trigger retrospection", str(ctx.exception))
 
-    def test_forces_learner_even_when_caller_omits_disabled(self):
+    def test_forces_live_lesson_even_when_caller_omits_disabled(self):
         with tempfile.TemporaryDirectory() as tmp:
             run = BacktestAgentRun(
                 llm_client=MockLLMClient(),
@@ -83,7 +83,7 @@ class TestBacktestAgentRun(unittest.TestCase):
                 knowledge_base=_temp_kb(tmp),
                 disabled=[],
             )
-            self.assertFalse(run.agent.registry.get("learner").is_enabled())
+            self.assertFalse(run.agent.registry.get("live_lesson").is_enabled())
 
     def test_smoke_cycle_does_not_write_lessons(self):
         with tempfile.TemporaryDirectory() as tmp:

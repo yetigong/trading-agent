@@ -1,6 +1,6 @@
 """Live vs backtest agent-run modes (Phase 4.5.2).
 
-Wrappers around TradingAgent that encode mode policy: learner/artifacts and the
+Wrappers around TradingAgent that encode mode policy: live_lesson/artifacts and the
 circular-trigger rule (only live runs may emit retrospection signals).
 """
 
@@ -21,7 +21,7 @@ class AgentRunMode(str, Enum):
 
 
 class LiveAgentRun:
-    """Live trading cycle run — learner on, artifacts on, retrospection allowed."""
+    """Live trading cycle run — live_lesson on, artifacts on, retrospection allowed."""
 
     mode = AgentRunMode.LIVE
     may_trigger_retrospection = True
@@ -59,15 +59,15 @@ class LiveAgentRun:
 
 
 class BacktestAgentRun:
-    """Historical replay run — learner off; must not trigger retrospection."""
+    """Historical replay run — live_lesson off; must not trigger retrospection."""
 
     mode = AgentRunMode.BACKTEST
     may_trigger_retrospection = False
 
     def __init__(self, **kwargs: Any) -> None:
         disabled: List[str] = list(kwargs.pop("disabled", None) or [])
-        if "learner" not in disabled:
-            disabled.append("learner")
+        if "live_lesson" not in disabled:
+            disabled.append("live_lesson")
         kwargs["disabled"] = disabled
         kwargs.setdefault("write_artifact", False)
         self._agent = TradingAgent(**kwargs)

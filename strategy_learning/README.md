@@ -2,7 +2,7 @@
 
 Offline learning and tuning for the trading agent. Sibling package to [`trading_agent/`](../trading_agent/).
 
-## Boundary (target)
+## Boundary
 
 ```mermaid
 flowchart LR
@@ -12,36 +12,41 @@ flowchart LR
   sl -.->|"soft KB context"| ta
 ```
 
-| Owns (target) | Does not own |
-|---------------|--------------|
+| Owns | Does not own |
+|------|--------------|
 | Knowledge base | Live trading cycles |
-| Param sweep → **recommendations** | Config param files (`data/*.json`) — never write these |
-| Live retrospection triggers | Market data writes / decision logs |
+| Param sweep → **recommendations** (4.5.4) | Config param files (`data/*.json`) — never write these |
+| Live retrospection triggers (4.5.5) | Market data writes / decision logs |
 
 `trading_agent` **reads** configs at runtime and (via human / future UX) **applies** approved recommendations. This package **proposes** only.
 
-Backtest engines remain under `trading_agent/backtest/` for now; sweep will invoke them. Deploy (`trading_service.py`) runs **live** mode only — backtest runs must never trigger retrospection (Phase 4.5.2).
+Backtest engines remain under `trading_agent/backtest/`; feedback and future sweep invoke them. Deploy (`trading_service.py`) runs **live** mode only — backtest runs must never trigger retrospection (Phase 4.5.2).
 
-## Layout (scaffold — Phase 4.5.1)
+## Layout (Phase 4.5.3)
 
 ```
 strategy_learning/
 ├── __init__.py
 ├── README.md
-├── knowledge/       # Phase 4.5.3 — KB ownership moves here
-├── sweep/           # Phase 4.5.4 — param sweep + SweepResult
-└── retrospection/   # Phase 4.5.5 — live underperformance → sweep signal
+├── knowledge/           # KB ownership (Done — 4.5.3)
+│   ├── records.py       # Schema v2 helpers, EventRef
+│   ├── store.py         # KnowledgeBase load/save/writes
+│   └── feedback.py      # BacktestFeedbackAgent
+├── sweep/               # Phase 4.5.4 — param sweep + SweepResult
+└── retrospection/       # Phase 4.5.5 — live underperformance → sweep signal
 ```
 
-Until those sub-phases land, KB / feedback / promotion still live under `trading_agent/agents/`. See [learning-loop.md](../docs/agents/learning-loop.md) and [PROJECT_PLAN.md](../docs/PROJECT_PLAN.md).
+Config apply stays in `trading_agent/agents/promotion.py` + `scripts/review_config_recommendation.py`. Live cycle lessons are written by `trading_agent/agents/live_lesson.py` (`LiveLessonAgent`) via this package’s KB API.
+
+See [learning-loop.md](../docs/agents/learning-loop.md) and [PROJECT_PLAN.md](../docs/PROJECT_PLAN.md).
 
 ## Phase map
 
 | Sub-phase | What lands here |
 |-----------|-----------------|
-| 4.5.1 | This scaffold + docs |
+| 4.5.1 | Scaffold + docs |
 | 4.5.2 | **Done** (in `trading_agent`) — `LiveAgentRun` / `BacktestAgentRun` |
-| 4.5.3 | KB + recommendation writes |
+| 4.5.3 | **Done** — KB + recommendation writes |
 | 4.5.4 | Sweep runner |
 | 4.5.5 | Retrospection → sweep |
 | Phase 11 | Separate deploy / schedule |

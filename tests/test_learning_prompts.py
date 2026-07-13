@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from trading_agent.agents.knowledge import KnowledgeBase
-from trading_agent.agents.learner import LearnerAgent
+from strategy_learning.knowledge import KnowledgeBase
+from trading_agent.agents.live_lesson import LiveLessonAgent
 from trading_agent.analysis.general import GeneralAnalysisStrategy
 from trading_agent.domain.cycle import StrategyContext
 from trading_agent.domain.portfolio.portfolio_snapshot import AccountSummary, PortfolioSnapshot
@@ -100,8 +100,8 @@ class TestPromptsIncludeKnowledge(unittest.TestCase):
         self.assertIn("Recent Trade Bias: -0.20", captured["prompt"])
 
 
-class TestBacktestLearnerIsolation(unittest.TestCase):
-    def test_engine_disables_learner(self):
+class TestBacktestLiveLessonIsolation(unittest.TestCase):
+    def test_engine_disables_live_lesson(self):
         with tempfile.TemporaryDirectory() as tmp:
             data_dir = Path(tmp)
             example = data_dir / "example"
@@ -138,16 +138,16 @@ class TestBacktestLearnerIsolation(unittest.TestCase):
                 fundamentals_provider=MockFundamentalsProvider(metrics={}),
                 alpaca_client=MockAlpacaTradingClient(),
                 knowledge_base=kb,
-                disabled=["learner"],
+                disabled=["live_lesson"],
             )
-            self.assertFalse(agent.registry.get("learner").is_enabled())
-            # Even if a cycle runs, disabled learner must not append lessons.
+            self.assertFalse(agent.registry.get("live_lesson").is_enabled())
+            # Even if a cycle runs, disabled live_lesson must not append lessons.
             agent.run_trading_cycle()
             self.assertEqual(len(kb.load()["lessons"]), 0)
 
 
 class TestLessonsUpdateArtifact(unittest.TestCase):
-    def test_learner_appends_lessons_update_to_artifact(self):
+    def test_live_lesson_appends_lessons_update_to_artifact(self):
         with tempfile.TemporaryDirectory() as tmp:
             data_dir = Path(tmp)
             example = data_dir / "example"
@@ -162,8 +162,8 @@ class TestLessonsUpdateArtifact(unittest.TestCase):
             class FakeLog:
                 artifact_path = str(artifact)
 
-            learner = LearnerAgent(knowledge_base=kb)
-            learner.run(
+            agent = LiveLessonAgent(knowledge_base=kb)
+            agent.run(
                 {
                     "cycle_id": "abcdef12-3456",
                     "status": "success",

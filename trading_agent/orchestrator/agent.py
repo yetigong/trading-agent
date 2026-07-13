@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 from trading_agent.agents.coordinator import CycleCoordinator
-from trading_agent.agents.knowledge import KnowledgeBase
+from strategy_learning.knowledge import KnowledgeBase
 from trading_agent.agents.registry import AgentRegistry, build_default_registry
 from trading_agent.broker.factory import build_broker_client
 from trading_agent.broker.base import BrokerClient
