@@ -86,7 +86,7 @@ Artifacts are written to `logs/account_history_<timestamp>.json`.
 | `trading_agent/account/aggregation.py` | Monthly rollup from daily points |
 | `trading_agent/orchestrator/account_history.py` | Read-only orchestrator |
 | `trading_agent/broker/alpaca_client.py` | `get_portfolio_history()` wrapper |
-| `tests/test_account_history.py` | Unit tests (mock Alpaca) |
+| `trading_agent/tests/test_account_history.py` | Unit tests (mock Alpaca) |
 
 ## Safe places to change behavior
 
@@ -98,5 +98,5 @@ Artifacts are written to `logs/account_history_<timestamp>.json`.
 ## Tests
 
 ```bash
-.venv/bin/python -m unittest tests.test_account_history -v
+.venv/bin/python -m unittest trading_agent.tests.test_account_history -v
 ```

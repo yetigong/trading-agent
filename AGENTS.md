@@ -34,7 +34,7 @@ When executing **multiple tasks in parallel**, prefer **git worktrees** (one dir
 Every PR (except explicitly doc-only) must:
 
 1. Pass `bash scripts/run_tests.sh` / CI `test` job
-2. Add or update `tests/` coverage for changed business logic (main flow components, not 100% lines)
+2. Add or update package-local test coverage (`strategy_learning/tests/`, `trading_agent/tests/`, or `tests/` for cross-package) for changed business logic (main flow components, not 100% lines)
 3. Keep unit tests mock-based (no API keys required in CI)
 4. Run live `tests/integration/` locally when touching Alpaca / LLM / Finnhub / FMP providers
 5. Leave no root-level `test_*.py` or committed throwaway scripts
@@ -43,8 +43,8 @@ Every PR (except explicitly doc-only) must:
 ## Testing and test hygiene
 
 - **No root-level `test_*.py`** — do not leave debugging scripts at the repo root; delete or move them before opening a PR
-- **`tests/`** — unit tests and mock-based integration (must pass in CI without API keys)
-- **`tests/integration/`** — live API connectivity checks; use `unittest.skipUnless` on env keys so CI auto-skips when secrets are absent
+- **`strategy_learning/tests/`** / **`trading_agent/tests/`** — package unit tests (must pass in CI without API keys)
+- **`tests/`** — cross-package unit tests; **`tests/integration/`** — live API connectivity checks; use `unittest.skipUnless` on env keys so CI auto-skips when secrets are absent
 - **Ad-hoc debugging** — use `scripts/` or a local untracked file; never commit throwaway tests
 - **Before PR** — run `scripts/run_tests.sh`; if you changed Alpaca or LLM providers, confirm integration tests ran (not skipped) locally
 - **Prefer mocks** — use `MockLLMClient` and `MockAlpacaTradingClient` for CI-safe coverage

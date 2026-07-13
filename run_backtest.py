@@ -222,7 +222,8 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="ARTIFACT",
         help=(
             "Run BacktestFeedback on ARTIFACT (or the run just completed). "
-            "Writes KB validations/lessons and may create a pending recommendation."
+            "Writes KB validations/lessons and soft signal-weight nudges; "
+            "hard config recommendations come from run_sweep.py (Phase 4.5.4)."
         ),
     )
     return parser

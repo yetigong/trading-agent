@@ -154,44 +154,14 @@ class BacktestFeedbackAgent:
             },
         })
 
+        # Phase 4.5.4+: hard config recommendations come from param sweep only.
+        # Feedback still scores validations/lessons and may nudge soft signal weights.
         recommendation = None
         weight_updates: Dict[str, float] = {}
         if underperf and run.status == "success":
-            proposed, diff_summary, weight_updates = self._propose_changes(
+            _proposed, _diff_summary, weight_updates = self._propose_changes(
                 config_snapshot, metrics, spy, reasons
             )
-            if proposed:
-                recommendation = self.knowledge_base.append_config_recommendation({
-                    "id": new_id("cr"),
-                    "summary": f"Proposed config change after {run_label} underperformance",
-                    "rationale": rationale + ". Diff: " + "; ".join(diff_summary),
-                    "provenance": {
-                        "generated_by": "backtest_feedback",
-                        "trigger_event": event,
-                        "evidence_events": [event],
-                        "kb_lineage": {
-                            "backtest_validation_id": validation["id"],
-                            "baseline_validation_id": validation["id"],
-                            "lesson_id": lesson["id"],
-                        },
-                    },
-                    "status": "pending_review",
-                    "baseline_config_hash": c_hash,
-                    "proposed_changes": proposed,
-                    "diff_summary": diff_summary,
-                    "expected_impact": {
-                        "reasons": reasons,
-                        "metrics_delta_vs_baseline": "re-backtest after promote",
-                    },
-                    "review": {
-                        "reviewed_at": None,
-                        "reviewed_by": None,
-                        "decision": None,
-                        "reject_reason": None,
-                    },
-                    "supersedes": None,
-                    "superseded_by": None,
-                })
 
         if weight_updates:
             # Capped deltas only when underperformance is attributed to signal families.
@@ -384,7 +354,10 @@ def format_feedback_banner(result: Dict[str, Any]) -> str:
             f"--recommendation-id {rec.get('id')}"
         )
     else:
-        lines.append("No pending config recommendation.")
+        lines.append(
+            "No pending config recommendation "
+            "(hard recs come from run_sweep.py / param sweep)."
+        )
     lines.append("=" * 72)
     return "\n".join(lines)
 

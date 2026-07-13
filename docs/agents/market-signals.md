@@ -117,11 +117,11 @@ Each entry includes 5-day return and relative strength vs SPY (`vs_spy_5d`). The
 
 | Test file | Coverage |
 |-----------|----------|
-| `tests/test_indicators.py` | RSI/MACD/SMA math |
-| `tests/test_signal_aggregator.py` | End-to-end aggregation with mocks |
-| `tests/test_fmp_provider.py` | FMP provider parsing and stable API |
-| `tests/test_fmp_cache.py` | FMP calendar-day file cache |
-| `tests/test_storage.py` | JSON file stores and domain models |
+| `trading_agent/tests/test_indicators.py` | RSI/MACD/SMA math |
+| `trading_agent/tests/test_signal_aggregator.py` | End-to-end aggregation with mocks |
+| `trading_agent/tests/test_fmp_provider.py` | FMP provider parsing and stable API |
+| `trading_agent/tests/test_fmp_cache.py` | FMP calendar-day file cache |
+| `trading_agent/tests/test_storage.py` | JSON file stores and domain models |
 | `tests/integration/test_finnhub_live.py` | Live Finnhub (skip without key) |
 | `tests/integration/test_fmp_live.py` | Live FMP (skip without key) |
 

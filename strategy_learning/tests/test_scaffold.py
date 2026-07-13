@@ -39,7 +39,10 @@ class TestStrategyLearningPackage(unittest.TestCase):
 
     def test_placeholder_subpackages_importable(self) -> None:
         import strategy_learning.retrospection  # noqa: F401
-        import strategy_learning.sweep  # noqa: F401
+        from strategy_learning.sweep import ParamSweepRunner, expand_oat_candidates
+
+        self.assertTrue(callable(ParamSweepRunner))
+        self.assertTrue(callable(expand_oat_candidates))
 
 
 if __name__ == "__main__":

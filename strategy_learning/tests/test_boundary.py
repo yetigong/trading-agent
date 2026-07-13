@@ -24,11 +24,14 @@ FORBIDDEN_NAMES = frozenset(
     }
 )
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "strategy_learning"
+# strategy_learning/ (package root; this file lives under strategy_learning/tests/)
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _iter_python_files(root: Path):
     for path in root.rglob("*.py"):
+        if "tests" in path.parts:
+            continue
         yield path
 
 

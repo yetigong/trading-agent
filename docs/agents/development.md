@@ -45,7 +45,7 @@ Do not commit `data/` — only edit locally. API keys and LLM provider settings 
 | Package | When to touch |
 |---------|----------------|
 | `trading_agent/` | Live cycle, brokers, signals, backtest engine, config stores |
-| `strategy_learning/` | Offline learning (KB/feedback in 4.5.3; sweep/retrospection in later 4.5.x) |
+| `strategy_learning/` | Offline learning (KB/feedback/sweep in 4.5.3–4.5.4; retrospection in 4.5.5) |
 
 Keep package diagrams in `docs/PROJECT_PLAN.md` and [codebase.md](codebase.md) in sync when changing boundaries.
 
@@ -107,10 +107,12 @@ RUN_INTEGRATION=1 .venv/bin/bash scripts/run_tests.sh
 Or:
 
 ```bash
-.venv/bin/python -m unittest discover tests -v
+.venv/bin/python -m unittest discover -s strategy_learning/tests -p 'test_*.py' -v
+.venv/bin/python -m unittest discover -s trading_agent/tests -p 'test_*.py' -v
+.venv/bin/python -m unittest tests/test_*.py -v
 ```
 
-Unit tests in `tests/` use mock LLM/broker clients and do not require API keys. Live integration tests in `tests/integration/` run when keys are present.
+Unit tests live next to their packages (`strategy_learning/tests/`, `trading_agent/tests/`); cross-package tests stay under `tests/` (top-level only — `tests/integration/` is opt-in). All use mock LLM/broker clients and do not require API keys. Live integration tests in `tests/integration/` run when keys are present.
 
 **Optional Robinhood broker** (live only, unofficial API):
 
@@ -126,7 +128,7 @@ See **[multi-broker.md](multi-broker.md)** for broker architecture, env vars, an
 Before opening or merging a PR:
 
 - Unit / mock suite must pass (`scripts/run_tests.sh` and CI `test`)
-- Changed logic should have regression coverage under `tests/` (main components of the flow, not 100% coverage)
+- Changed logic should have regression coverage under the matching package `tests/` (or `tests/` for cross-package) — main components of the flow, not 100% coverage
 - No root-level `test_*.py` or committed throwaways
 - Provider changes: run integration tests locally and confirm they were not skipped
 

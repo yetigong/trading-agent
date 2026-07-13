@@ -11,11 +11,21 @@ if [ ! -x "$PYTHON" ]; then
   exit 1
 fi
 
-# Unit / mock tests only (top-level tests/). Live API checks live under
-# tests/integration/ and are opt-in so pre-commit is not blocked by optional
-# provider credit/model issues.
-UNIT_TESTS=(tests/test_*.py)
-"$PYTHON" -m unittest "${UNIT_TESTS[@]}" -v
+# Unit / mock tests by package. Live API checks live under tests/integration/
+# and are opt-in so pre-commit is not blocked by optional provider credit/model issues.
+echo "strategy_learning unit tests..."
+"$PYTHON" -m unittest discover -s strategy_learning/tests -p 'test_*.py' -v
+
+echo "trading_agent unit tests..."
+"$PYTHON" -m unittest discover -s trading_agent/tests -p 'test_*.py' -v
+
+echo "cross-package / shared unit tests..."
+# Top-level only — do not recurse into tests/integration/
+shopt -s nullglob
+CROSS_TESTS=(tests/test_*.py)
+if [ ${#CROSS_TESTS[@]} -gt 0 ]; then
+  "$PYTHON" -m unittest "${CROSS_TESTS[@]}" -v
+fi
 
 if [ "${RUN_INTEGRATION:-0}" = "1" ]; then
   echo "Running live integration tests..."
