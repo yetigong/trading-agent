@@ -8,12 +8,14 @@
 | `run_account_history.py` | One account history fetch; Alpaca keys only; saves `logs/account_history_*.json` |
 | `trading_service.py` | Loops forever via `TradingScheduler` every `TRADING_CYCLE_INTERVAL` minutes (**live** deploy path) |
 | `run_backtest.py` | Historical replay — **not** the live path; must not trigger retrospection/sweep (Phase 4.5.2) |
+| `run_sweep.py` | Manual OAT param sweep (hard recommendations) |
+| `run_retrospection.py` | Consume `logs/retrospection_*.json` → out-of-band sweep |
 
 Live trading scripts delegate to `trading_agent/orchestrator/`. Account history is separate — see **[account-history.md](account-history.md)**. Offline learning lives in [`strategy_learning/`](../../strategy_learning/) — see **[learning-loop.md](learning-loop.md)**.
 
 ## Sequence
 
-Phase 4: `TradingAgent` delegates to `CycleCoordinator` (see **[multi-agent.md](multi-agent.md)**). The layered modules below still do the work inside each agent. Phase 4.5.2: `TradingCycle` uses `LiveAgentRun`; backtests use `BacktestAgentRun` — only live may signal `strategy_learning` retrospection.
+Phase 4: `TradingAgent` delegates to `CycleCoordinator` (see **[multi-agent.md](multi-agent.md)**). The layered modules below still do the work inside each agent. Phase 4.5.2: `TradingCycle` uses `LiveAgentRun`; backtests use `BacktestAgentRun` — only live may signal `strategy_learning` retrospection. After a successful live cycle, `TradingCycle` may emit a durable retrospection signal (detect only; sweep stays out-of-band via `run_retrospection.py`).
 
 ```mermaid
 sequenceDiagram
@@ -75,3 +77,4 @@ An empty decision list from the strategy is **valid** — treated as HOLD. Rebal
 - **Broker submit** — `trading_agent/execution/executor.py`
 - **Orchestration** — `trading_agent/orchestrator/agent.py`
 - **Summary output** — `run_agent.py`, `orchestrator/trading_cycle.py`
+- **Retrospection emit (live only)** — `TradingCycle._maybe_emit_retrospection`; must not run sweep in-process — see [learning-loop.md](learning-loop.md). When changing this path, update the retrospection coverage checklist in [development.md](development.md#test-coverage-by-flow).

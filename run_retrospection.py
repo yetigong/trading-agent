@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manual entry point for Phase 4.5.4 param sweep (sole hard-recommendation producer)."""
+"""Consume live retrospection triggers and run an out-of-band param sweep (Phase 4.5.5)."""
 
 from __future__ import annotations
 
@@ -8,15 +8,22 @@ import json
 import logging
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from strategy_learning.knowledge import KnowledgeBase
+from strategy_learning.retrospection import (
+    claim_trigger,
+    list_trigger_paths,
+    load_trigger,
+    mark_consumed,
+)
 from strategy_learning.sweep import (
     ParamSweepRunner,
     config_snapshot_from_sections,
 )
 from strategy_learning.sweep.operator_cli import (
     LOG_DIR,
+    default_sweep_window,
     load_json_arg,
     parse_date,
     save_backtest_artifact,
@@ -81,19 +88,13 @@ def build_base_config(args) -> BacktestConfig:
     )
 
 
-def print_sweep_summary(payload: Dict[str, Any], artifact: Path) -> None:
+def print_summary(payload: Dict[str, Any], artifact: Path, trigger_path: Path) -> None:
     print("\n" + "=" * 72)
-    print("PARAM SWEEP SUMMARY")
+    print("RETROSPECTION → SWEEP SUMMARY")
     print("=" * 72)
+    print(f"Trigger: {trigger_path}")
     print(f"Sweep ID: {payload.get('sweep_id')}")
-    print(f"Label: {payload.get('run_label')}")
     print(f"Period: {payload.get('period_start')} → {payload.get('period_end')}")
-    baseline = payload.get("baseline") or {}
-    print(
-        f"Baseline: status={baseline.get('status')} "
-        f"sharpe={(baseline.get('metrics') or {}).get('sharpe')}"
-    )
-    print(f"Candidates: {len(payload.get('candidates') or [])}")
     winner = payload.get("winner") or {}
     print(
         f"Winner: {winner.get('label')} status={winner.get('status')} "
@@ -104,41 +105,48 @@ def print_sweep_summary(payload: Dict[str, Any], artifact: Path) -> None:
         print("  Review: .venv/bin/python scripts/review_config_recommendation.py")
     for note in payload.get("notes") or []:
         print(f"Note: {note}")
-    print(f"Artifact: {artifact}")
+    print(f"Sweep artifact: {artifact}")
     print("=" * 72)
 
 
 def build_parser() -> argparse.ArgumentParser:
+    default_start, default_end = default_sweep_window()
     parser = argparse.ArgumentParser(
-        description="Run OAT param sweep; optionally write a pending KB recommendation"
+        description=(
+            "Consume a pending live retrospection trigger and run param sweep "
+            "(out-of-band; never inside TradingCycle)"
+        )
     )
-    parser.add_argument("--start", required=True, help="Backtest start date YYYY-MM-DD")
-    parser.add_argument("--end", required=True, help="Backtest end date YYYY-MM-DD")
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List pending retrospection triggers and exit",
+    )
+    parser.add_argument(
+        "--trigger",
+        help="Path to a retrospection_*.json trigger (default: oldest pending)",
+    )
+    parser.add_argument(
+        "--start",
+        default=default_start.isoformat(),
+        help=f"Sweep backtest start YYYY-MM-DD (default: {default_start.isoformat()})",
+    )
+    parser.add_argument(
+        "--end",
+        default=default_end.isoformat(),
+        help=f"Sweep backtest end YYYY-MM-DD (default: {default_end.isoformat()})",
+    )
     parser.add_argument("--rebalance", choices=["weekly", "daily"], default="weekly")
     parser.add_argument("--initial-cash", type=float, default=100_000.0)
     parser.add_argument("--risk-free-rate", type=float, default=0.04)
     parser.add_argument("--symbols", help="Comma-separated symbols (default: watchlist or AAPL)")
-    parser.add_argument("--run-label", default="sweep", help="Label stored in the artifact")
-    parser.add_argument("--refresh", action="store_true", help="Refresh historical caches")
-    parser.add_argument(
-        "--llm-pause-seconds",
-        type=float,
-        default=0.0,
-        help="Sleep between LLM rebalance cycles to reduce rate-limit pressure",
-    )
+    parser.add_argument("--run-label", default="retrospection_sweep")
+    parser.add_argument("--refresh", action="store_true")
+    parser.add_argument("--llm-pause-seconds", type=float, default=0.0)
     parser.add_argument("--override-strategy", help="JSON object merged into baseline strategy params")
     parser.add_argument("--override-analysis", help="JSON object merged into analysis params")
     parser.add_argument("--override-preferences", help="JSON object merged into baseline preferences")
-    parser.add_argument(
-        "--max-workers",
-        type=int,
-        default=1,
-        help=(
-            "Parallel candidate backtests (default 1 = sequential). "
-            "Use >1 to overlap candidates; LLM calls within each backtest stay sequential. "
-            "Watch provider rate limits."
-        ),
-    )
+    parser.add_argument("--max-workers", type=int, default=1)
     parser.add_argument(
         "--write-kb",
         action="store_true",
@@ -148,25 +156,37 @@ def build_parser() -> argparse.ArgumentParser:
         "--validate-artifact",
         help="Optional held-out backtest artifact path attached as evidence EventRef",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show which trigger would be consumed without running a sweep",
+    )
     return parser
 
 
-def main() -> None:
-    parser = build_parser()
-    args = parser.parse_args()
-    app_config = get_config()
-    setup_logging(app_config.log_level)
-    logger = logging.getLogger(__name__)
+def resolve_trigger_path(args) -> Path:
+    if args.trigger:
+        path = Path(args.trigger)
+        if not path.exists():
+            raise SystemExit(f"Trigger not found: {path}")
+        return path
+    pending = list_trigger_paths(LOG_DIR, status="pending")
+    if not pending:
+        raise SystemExit("No pending retrospection triggers in logs/")
+    return pending[0]
 
+
+def run_sweep_for_trigger(args, trigger_path: Path, logger: logging.Logger) -> None:
     try:
-        validate_config(app_config)
+        claim_trigger(trigger_path)
     except ValueError as exc:
-        logger.error("Configuration error: %s", exc)
-        raise SystemExit(1) from exc
+        raise SystemExit(str(exc)) from exc
 
+    trigger = load_trigger(trigger_path)
     base = build_base_config(args)
+    logger.info("Retrospection trigger: %s reasons=%s", trigger.trigger_id, trigger.reasons)
     logger.info("Sweep baseline config: %s", json.dumps(base.to_dict(), indent=2))
-    logger.info("App config: %s", json.dumps(config_summary(app_config)))
+    logger.info("App config: %s", json.dumps(config_summary(get_config())))
 
     baseline_snapshot = config_snapshot_from_sections(
         strategy_params=base.strategy_params,
@@ -174,21 +194,18 @@ def main() -> None:
         rebalance_params=base.rebalance_params,
         signal_config=base.signal_config,
     )
-    # Carry period into snapshot for SweepResult defaults / hashing context
     baseline_snapshot["start"] = base.start.isoformat()
     baseline_snapshot["end"] = base.end.isoformat()
 
-    # One engine per backtest call so --max-workers >1 does not share mutable state.
     def run_backtest(config_snapshot: Dict[str, Any], run_label: str) -> Dict[str, Any]:
         cfg = deepcopy(base)
         cfg.run_label = run_label
         cfg.strategy_params = dict(config_snapshot.get("strategy_params") or {})
         cfg.preferences = dict(config_snapshot.get("preferences") or {})
         cfg.rebalance_params = dict(config_snapshot.get("rebalance_params") or {})
-        # Keep analysis/signal/LLM from baseline; do not mutate data/*.json stores.
         result = BacktestEngine().run(cfg)
         payload = result.to_dict()
-        artifact = save_backtest_artifact(payload, run_label)
+        artifact = save_backtest_artifact(payload, run_label, log_dir=LOG_DIR)
         payload["artifact_path"] = str(artifact)
         logger.info("Candidate artifact %s → %s", run_label, artifact)
         return payload
@@ -199,8 +216,6 @@ def main() -> None:
         max_workers=args.max_workers,
         rebalance_frequency=args.rebalance,
     )
-
-    # First pass without KB path (artifact not yet known); write KB after save if needed.
     result = runner.run(
         baseline_snapshot,
         period_start=base.start.isoformat(),
@@ -209,33 +224,76 @@ def main() -> None:
         write_kb=False,
     )
     payload = result.to_dict()
-    artifact = save_sweep_artifact(payload, args.run_label)
+    artifact = save_sweep_artifact(payload, args.run_label, log_dir=LOG_DIR)
 
+    recommendation_id = None
     if args.write_kb:
         from strategy_learning.sweep.recommend import maybe_write_recommendation
 
+        extra_evidence: List[Dict[str, Any]] = []
+        if trigger.event_ref:
+            extra_evidence.append(dict(trigger.event_ref))
         kb = KnowledgeBase()
         rec = maybe_write_recommendation(
             kb,
             result,
             artifact_path=str(artifact),
             validate_artifact_path=args.validate_artifact,
+            extra_evidence=extra_evidence,
         )
         if rec:
-            result.recommendation_id = rec.get("id")
-            result.notes.append(f"Pending recommendation {rec.get('id')}")
-            payload = result.to_dict()
-            with artifact.open("w", encoding="utf-8") as f:
-                json.dump(serialize_for_json(payload), f, indent=2)
-                f.write("\n")
+            recommendation_id = rec.get("id")
+            result.recommendation_id = recommendation_id
+            result.notes.append(f"Pending recommendation {recommendation_id}")
         else:
             result.notes.append("write_kb set but no recommendation produced")
-            payload = result.to_dict()
-            with artifact.open("w", encoding="utf-8") as f:
-                json.dump(serialize_for_json(payload), f, indent=2)
-                f.write("\n")
+        result.notes.append(f"retrospection_trigger={trigger.trigger_id}")
+        payload = result.to_dict()
+        with artifact.open("w", encoding="utf-8") as f:
+            json.dump(serialize_for_json(payload), f, indent=2)
+            f.write("\n")
 
-    print_sweep_summary(payload, artifact)
+    mark_consumed(
+        trigger_path,
+        sweep_artifact_path=str(artifact),
+        recommendation_id=recommendation_id,
+    )
+    print_summary(payload, artifact, trigger_path)
+
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
+    app_config = get_config()
+    setup_logging(app_config.log_level)
+    logger = logging.getLogger(__name__)
+
+    if args.list:
+        pending = list_trigger_paths(LOG_DIR, status="pending")
+        if not pending:
+            print("No pending retrospection triggers.")
+            return
+        print(f"Pending triggers ({len(pending)}):")
+        for path in pending:
+            trigger = load_trigger(path)
+            print(f"  {path} id={trigger.trigger_id} reasons={trigger.reasons}")
+        return
+
+    try:
+        validate_config(app_config)
+    except ValueError as exc:
+        logger.error("Configuration error: %s", exc)
+        raise SystemExit(1) from exc
+
+    trigger_path = resolve_trigger_path(args)
+    if args.dry_run:
+        trigger = load_trigger(trigger_path)
+        print(f"Would consume: {trigger_path}")
+        print(f"  id={trigger.trigger_id} reasons={trigger.reasons}")
+        print(f"  sweep window: {args.start} → {args.end}")
+        return
+
+    run_sweep_for_trigger(args, trigger_path, logger)
 
 
 if __name__ == "__main__":

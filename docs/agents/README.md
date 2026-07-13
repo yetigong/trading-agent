@@ -24,7 +24,7 @@ Also see [`strategy_learning/README.md`](../../strategy_learning/README.md) for 
 - **Package boundary** — `trading_agent` owns live trading + configs + backtest; `strategy_learning` owns KB/recommendations/sweep. Learning must not write `data/*.json` params — see [learning-loop.md](learning-loop.md)
 - **Paper trading default** — `ALPACA_PAPER=true`; never commit `.env` or secrets
 - **Test with mocks** — use `LLM_PROVIDER=mock` and `MockBrokerClient` in tests; CI has no API keys
-- **No root-level test files** — put unit/mock tests in `tests/` and live API checks in `tests/integration/`
-- **Per-PR tests** — run `bash scripts/run_tests.sh`; cover changed logic; include a Test plan checklist on every PR
+- **No root-level test files** — put package unit tests in `strategy_learning/tests/` or `trading_agent/tests/`; cross-package under `tests/`; live API checks in `tests/integration/`
+- **Per-PR tests** — run `bash scripts/run_tests.sh`; cover **main flow layers** you change (not only one submodule); include a Test plan checklist on every PR — see [development.md § Test coverage by flow](development.md#test-coverage-by-flow)
 - **Parallel work** — when running multiple tasks at once, use [git worktrees](development.md#parallel-work-prefer-git-worktrees) (separate directories per branch); remove worktrees when done
 - **Structured LLM output** — trading decisions must parse as JSON via `trading_agent/models.py`

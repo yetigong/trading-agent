@@ -15,7 +15,7 @@ Two top-level packages share the repo:
 
 Persistence, management UX, and multi-tenant support follow in later phases. Phase **11** decouples `strategy_learning` into its own deploy/schedule.
 
-### Current architecture (Phase 4.5.4 — param sweep owns hard recommendations)
+### Current architecture (Phase 4.5 complete — live retrospection + param sweep)
 
 ```mermaid
 flowchart TB
@@ -24,6 +24,7 @@ flowchart TB
         RAH[run_account_history.py]
         RBT[run_backtest.py]
         RSW[run_sweep.py]
+        RRT[run_retrospection.py]
         TS[trading_service.py]
     end
 
@@ -43,7 +44,7 @@ flowchart TB
     subgraph sl [strategy_learning]
         SLK[KnowledgeBase]
         SLS[ParamSweepRunner]
-        SLR[retrospection placeholder]
+        SLR[RetrospectionDetector]
         FB[BacktestFeedbackAgent]
     end
 
@@ -60,7 +61,9 @@ flowchart TB
     AG -->|"LiveLessonAgent writes"| SLK
     Promo -->|"status via KB"| SLK
     Promo -->|"writes"| Cfg
-    SLR -.->|"live signal only 4.5.5+"| Live
+    Live -->|"emit signal"| SLR
+    SLR -->|"logs/retrospection_*.json"| RRT
+    RRT --> SLS
 ```
 
 **Update this diagram** when changing the trading or learning pipeline (see `docs/agents/development.md`).
@@ -124,7 +127,7 @@ flowchart TB
 | **Phase 2** — Richer market context                        | **Done**        | RSI/MACD, sector ETFs, Finnhub news, FMP fundamentals in prompts                        |
 | **Phase 3** — Backtesting                                  | **Done**        | Historical replay via TradingAgent; benchmarks; `run_backtest.py`; per-provider cache   |
 | **Phase 4** — Multi-agent architecture                     | **Done**        | Analyzer, strategizer, executor, logger, learner; `trading_agent/agents/` + coordinator |
-| **Phase 4.5** — Learning loop                              | **In progress** | A/B done; sub-phases 4.5.1–4.5.5 (see below)                                            |
+| **Phase 4.5** — Learning loop                              | **Done**        | Soft KB context + hard recs via sweep; live retrospection out-of-band                   |
 | **Phase 5** — Multi-broker                                 | **Done**        | `BrokerClient` + Alpaca, Robinhood (optional), mock                                     |
 | **Phase 6** — Data persistence                             | Planned         | DB for prefs, history, confirmations, knowledge base                                    |
 | **Phase 7** — Manageability UX                             | Planned         | Console for agents, LLM config, activity and history                                    |
@@ -332,7 +335,7 @@ Phase 4 delivered the **structural** loop (logger → learner → file KB → an
 
 **Doc:** [`docs/agents/learning-loop.md`](agents/learning-loop.md) · Package scaffold: [`strategy_learning/`](../strategy_learning/)
 
-### Delivered (A + B + 4.5.1 + 4.5.2 + 4.5.3 + 4.5.4)
+### Delivered (A + B + 4.5.1–4.5.5)
 
 - Backtest disables `LiveLessonAgent` (no per-cycle KB pollution)
 - Analysis/strategy prompts include lessons, signal weights, `recent_trade_bias`
@@ -344,6 +347,7 @@ Phase 4 delivered the **structural** loop (logger → learner → file KB → an
 - `LiveAgentRun` / `BacktestAgentRun` wrappers; circular-trigger guard; deploy = live only
 - Config apply remains in `trading_agent` promotion (learning never writes `data/*.json` params)
 - **Param sweep** (`strategy_learning/sweep/`, `run_sweep.py`) — OAT N backtests → `SweepResult`; **sole** hard recommendation producer
+- **Live retrospection** (`strategy_learning/retrospection/`, `run_retrospection.py`) — underperf detect → durable signal → out-of-band sweep
 
 
 
@@ -356,7 +360,7 @@ Phase 4 delivered the **structural** loop (logger → learner → file KB → an
 | **4.5.2** — Live vs Backtest runs | **Done** | `LiveAgentRun` / `BacktestAgentRun`; retrospection only on live; deploy = live only                 |
 | **4.5.3** — Data boundary         | **Done** | KB + rec writes in `strategy_learning`; configs stay trading_agent-owned; apply not in learning pkg |
 | **4.5.4** — Param sweep           | **Done** | Parallel N backtests → `SweepResult`; **sole** recommendation producer                              |
-| **4.5.5** — Live retrospection    | Planned  | Live underperf → out-of-band sweep; mark 4.5 complete                                               |
+| **4.5.5** — Live retrospection    | **Done** | Live underperf → durable signal → out-of-band sweep; Phase 4.5 complete                             |
 
 
 Walk-forward gate API (`--require-validate-window`) already exists for production promotes.
@@ -493,7 +497,7 @@ Lower priority until multi-agent + persistence + auth are proven in paper tradin
 
 **Goal:** Run `strategy_learning` on its own schedule/deployment. Live trading emits durable retrospection signals (queue/file/DB); learning never runs in-process inside the trading cycle deploy.
 
-Depends on Phase 4.5.5. Out of scope until the learning loop is complete inside the monorepo.
+Depends on Phase 4.5.5 (Done). File-based retrospection signals are the monorepo bridge; separate deploy/schedule remains Phase 11.
 
 ---
 
@@ -506,7 +510,7 @@ Depends on Phase 4.5.5. Out of scope until the learning loop is complete inside 
 3. ~~Phase 1 follow-ups~~ — pre-trade validation, dedupe ✓
 4. ~~Phase 3~~ — backtesting ✓
 5. ~~**Phase 4** — multi-agent architecture~~ ✓
-6. **Phase 4.5** — learning loop (~~4.5.1~~ ✓ → ~~4.5.2~~ ✓ → ~~4.5.3~~ ✓ → ~~4.5.4~~ ✓ → 4.5.5 retrospection)
+6. ~~**Phase 4.5** — learning loop~~ ✓ (4.5.1–4.5.5)
 7. ~~**Phase 5** — multi-broker~~ ✓
 8. **Phase 6** — data persistence (before UX and multi-user)
 9. **Phase 7** — manageability UX
@@ -534,8 +538,9 @@ Depends on Phase 4.5.5. Out of scope until the learning loop is complete inside 
 | Account history fetcher      | `trading_agent/account/`                                                                    |
 | Core orchestrator            | `trading_agent/orchestrator/agent.py` (`TradingAgent` facade)                               |
 | Multi-agent package          | `trading_agent/agents/`                                                                     |
-| Strategy learning (KB + sweep) | `strategy_learning/knowledge/`, `strategy_learning/sweep/`                              |
+| Strategy learning (KB + sweep + retro) | `strategy_learning/knowledge/`, `sweep/`, `retrospection/`                          |
 | Param sweep entry            | `run_sweep.py`                                                                          |
+| Retrospection consumer       | `run_retrospection.py`                                                                  |
 | Learning loop (apply path)   | `trading_agent/agents/promotion.py`; `docs/agents/learning-loop.md`                         |
 | Backtest engine              | `trading_agent/backtest/`                                                                   |
 | Historical market data       | `trading_agent/market_data/alpaca_historical.py`, `finnhub_historical.py`                   |

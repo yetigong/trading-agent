@@ -45,7 +45,7 @@ Do not commit `data/` — only edit locally. API keys and LLM provider settings 
 | Package | When to touch |
 |---------|----------------|
 | `trading_agent/` | Live cycle, brokers, signals, backtest engine, config stores |
-| `strategy_learning/` | Offline learning (KB/feedback/sweep in 4.5.3–4.5.4; retrospection in 4.5.5) |
+| `strategy_learning/` | Offline learning (KB / feedback / sweep / retrospection — Phase 4.5 Done) |
 
 Keep package diagrams in `docs/PROJECT_PLAN.md` and [codebase.md](codebase.md) in sync when changing boundaries.
 
@@ -128,11 +128,50 @@ See **[multi-broker.md](multi-broker.md)** for broker architecture, env vars, an
 Before opening or merging a PR:
 
 - Unit / mock suite must pass (`scripts/run_tests.sh` and CI `test`)
-- Changed logic should have regression coverage under the matching package `tests/` (or `tests/` for cross-package) — main components of the flow, not 100% coverage
+- Changed logic should have regression coverage under the matching package `tests/` (or `tests/` for cross-package) — **main flow layers**, not 100% line coverage
 - No root-level `test_*.py` or committed throwaways
 - Provider changes: run integration tests locally and confirm they were not skipped
 
 Full checklist: [pr-description.md](pr-description.md#test-requirements-every-pr).
+
+### Test coverage by flow
+
+**Rule:** cover every layer you change in a multi-step flow — pure logic, package wiring, orchestrator/hook, and operator CLI when present. Source-only assertions (“file mentions symbol X”) are not enough for behavior.
+
+| Flow | Layers that need tests when touched | Canonical tests |
+|------|-------------------------------------|-----------------|
+| Live trading cycle | Decision parse → prepare/execute → cycle smoke | `trading_agent/tests/test_trading_cycle_*.py`, `test_trade_*.py`, `test_decision_parsing.py` |
+| Live vs backtest modes | Mode flags, live_lesson on/off, circular-trigger guard | `trading_agent/tests/test_agent_run_modes.py` |
+| Live retrospection (4.5.5) | Metrics → detector → signal I/O → `TradingCycle` emit hook → `run_retrospection.py` CLI (list / dry-run / consume with **mocked** sweep) | See table below |
+| Param sweep | OAT candidates → runner → recommendation write | `strategy_learning/tests/test_sweep_*.py` |
+| KB / feedback / promotion | Store + EventRef; feedback does not rewrite configs; approve/reject | `strategy_learning/tests/test_knowledge.py`, `test_feedback.py`, `test_boundary.py`; `tests/test_learning_loop.py` |
+| Brokers / providers | Mock unit + optional live integration | package `tests/` + `tests/integration/` |
+
+#### Retrospection coverage checklist (required when changing that path)
+
+| Layer | Must assert | Test module |
+|-------|-------------|-------------|
+| Metrics | lag vs SPY, hold-streak, cycle summary load | `strategy_learning/tests/test_retrospection_metrics.py` |
+| Detector | trigger / no-trigger / pending / cooldown skips | `strategy_learning/tests/test_retrospection_detector.py` |
+| Signal I/O | write pending → list → mark consumed; cooldown window | `strategy_learning/tests/test_retrospection_signal.py` |
+| Cycle hook | `_maybe_emit_retrospection` emits on hit, skips otherwise, **never fails the cycle** | `trading_agent/tests/test_retrospection_cycle_hook.py` |
+| Mode guard | live may emit; backtest raises | `trading_agent/tests/test_agent_run_modes.py` |
+| Consumer CLI | `--list`, `--dry-run` (no consume), consume marks trigger consumed; pass short `--start`/`--end` in tests | `strategy_learning/tests/test_run_retrospection_cli.py` |
+| Boundary | TradingCycle must not import / run `ParamSweepRunner` in-process | `test_agent_run_modes.TestTradingCycleDoesNotImportSweep` |
+
+Feature inventory: [learning-loop.md](learning-loop.md#tests).
+
+#### Automated vs local sanity
+
+- **CI / `scripts/run_tests.sh`:** mock-based only. Inject fake `run_backtest` / `ParamSweepRunner` for sweep and retrospection consume paths.
+- **Optional local e2e:** `--list` / `--dry-run` against a temp or real trigger; if you run a real backtest or sweep, use a **short window** and few symbols, e.g.:
+
+```bash
+.venv/bin/python run_retrospection.py --dry-run \
+  --start 2026-07-06 --end 2026-07-10 --symbols AAPL
+```
+
+Do not require a full multi-week OAT LLM sweep in the PR checklist — it is slow and expensive; mock coverage is the bar.
 
 ## Coding conventions
 
