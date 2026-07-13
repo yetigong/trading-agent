@@ -1,12 +1,13 @@
 """
 Strategy learning — offline tuning separate from the live trading pipeline.
 
-Ownership (Phase 4.5.3+):
+Ownership (Phase 4.5.4+):
   - Knowledge base and config *recommendations*
-  - Param sweep and live retrospection triggers (4.5.4 / 4.5.5)
+  - Param sweep (sole hard-recommendation producer)
+  - Live retrospection triggers (4.5.5)
 
 Does **not** own or write trading_agent config stores (`data/*.json` params).
-Backtests stay in ``trading_agent.backtest`` for now; this package will call them.
+Backtests stay in ``trading_agent.backtest`` for now; this package calls them via sweep.
 
 See docs/agents/learning-loop.md and docs/PROJECT_PLAN.md (Phase 4.5).
 """

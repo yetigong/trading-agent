@@ -33,11 +33,14 @@ jobs:
         
     - name: Run unittest tests
       run: |
-        PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest discover tests -v
+        PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest discover -s strategy_learning/tests -p 'test_*.py' -v
+        PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest discover -s trading_agent/tests -p 'test_*.py' -v
+        PYTHONPATH=$PYTHONPATH:$(pwd) python -m unittest tests/test_*.py -v
         
     - name: Run pytest tests with coverage
       run: |
-        PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests/ --cov=trading_agent --cov-report=term
+        PYTHONPATH=$PYTHONPATH:$(pwd) pytest strategy_learning/tests trading_agent/tests tests/test_*.py \
+          --cov=trading_agent --cov=strategy_learning --cov-report=term
 
   build-and-push:
     needs: test

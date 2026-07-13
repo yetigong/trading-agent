@@ -2,7 +2,7 @@
 
 Manual, repeatable evaluation of the live `TradingAgent` pipeline on historical data, compared against industry-standard benchmarks.
 
-**Package note:** The backtest engine stays under **`trading_agent/backtest/`** through Phase 4.5. Offline tuning (`strategy_learning` sweep) will *call* this engine; it does not own it yet. Backtest runs must **never** trigger live retrospection or sweep (circular-trigger rule — [learning-loop.md](learning-loop.md)).
+**Package note:** The backtest engine stays under **`trading_agent/backtest/`** through Phase 4.5. Offline tuning (`strategy_learning` sweep) *calls* this engine; it does not own it. Backtest runs must **never** trigger live retrospection or sweep (circular-trigger rule — [learning-loop.md](learning-loop.md)).
 
 ## Quick start
 
@@ -42,7 +42,7 @@ Manual, repeatable evaluation of the live `TradingAgent` pipeline on historical 
 .venv/bin/python run_backtest.py --start 2024-01-01 --end 2024-06-30 --feedback
 ```
 
-Learner is **disabled** during backtest replay so live `knowledge_base.json` is not polluted by per-cycle strings. Aggregate learning uses `--feedback` — see [learning-loop.md](learning-loop.md). After Phase 4.5.4, hard recommendations come from **param sweep** in `strategy_learning`, not from a single `--feedback` run.
+Learner is **disabled** during backtest replay so live `knowledge_base.json` is not polluted by per-cycle strings. Aggregate learning uses `--feedback` for validations and soft signal-weight nudges — see [learning-loop.md](learning-loop.md). Hard recommendations come from **param sweep** (`run_sweep.py` / `strategy_learning.sweep`), not from a single `--feedback` run.
 
 Artifacts are written to `logs/backtest_<timestamp>_<run_label>.json`.
 

@@ -86,7 +86,7 @@ def _underperforming_run() -> BacktestRun:
 
 
 class TestBacktestFeedback(unittest.TestCase):
-    def test_feedback_creates_pending_recommendation(self):
+    def test_feedback_writes_validation_not_hard_recommendation(self):
         with tempfile.TemporaryDirectory() as tmp:
             kb = _seed_kb(tmp)
             artifact = Path(tmp) / "backtest.json"
@@ -94,10 +94,8 @@ class TestBacktestFeedback(unittest.TestCase):
             result = BacktestFeedbackAgent(knowledge_base=kb).reflect_on_artifact(artifact)
             self.assertTrue(result["underperformance"])
             self.assertIsNotNone(result["validation"])
-            self.assertIsNotNone(result["recommendation"])
-            self.assertEqual(result["recommendation"]["status"], "pending_review")
-            pending = kb.get_pending_recommendation()
-            self.assertEqual(pending["id"], result["recommendation"]["id"])
+            self.assertIsNone(result["recommendation"])
+            self.assertIsNone(kb.get_pending_recommendation())
             weights = kb.signal_weights()
             self.assertIn("news", weights)
 
@@ -146,7 +144,7 @@ class TestBacktestFeedback(unittest.TestCase):
                 result = BacktestFeedbackAgent(knowledge_base=kb).reflect_on_artifact(
                     artifact
                 )
-                self.assertIsNotNone(result["recommendation"])
+                self.assertIsNone(result["recommendation"])
 
                 self.assertEqual(StrategyConfigStore().load(), before_strategy)
                 self.assertEqual(

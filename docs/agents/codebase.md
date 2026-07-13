@@ -7,7 +7,7 @@ LLM-driven **paper trading** (and optional live brokers) plus **offline strategy
 | Package | Responsibility |
 |---------|----------------|
 | [`trading_agent/`](../../trading_agent/) | Live cycles, brokers, market data, decision logs, **config files**, backtest engine |
-| [`strategy_learning/`](../../strategy_learning/) | Knowledge base, recommendations, sweep, retrospection (KB Done in 4.5.3; see [learning-loop.md](learning-loop.md)) |
+| [`strategy_learning/`](../../strategy_learning/) | Knowledge base, recommendations, sweep, retrospection (KB + sweep Done through 4.5.4; see [learning-loop.md](learning-loop.md)) |
 
 `strategy_learning` **proposes** config changes; it does **not** write `data/*.json` params. Humans / future management UX apply approvals into trading_agent-owned configs.
 
@@ -98,12 +98,15 @@ trading-agent/
 │   ├── formatters/           # Domain → LLM prompt text
 │   ├── models.py             # JSON parsing helpers
 │   └── llm/
-├── strategy_learning/        # Offline tuning (KB ownership in 4.5.3+)
+├── strategy_learning/        # Offline tuning (KB + sweep through 4.5.4)
 │   ├── knowledge/            # KnowledgeBase, records, BacktestFeedbackAgent
-│   ├── sweep/                # Param sweep — Phase 4.5.4
-│   └── retrospection/        # Live underperf trigger — Phase 4.5.5
+│   ├── sweep/                # ParamSweepRunner — Done (4.5.4)
+│   ├── retrospection/        # Live underperf trigger — Phase 4.5.5
+│   └── tests/                # strategy_learning unit tests
+├── trading_agent/tests/      # trading_agent unit tests
 ├── run_backtest.py           # manual historical backtest CLI
-├── tests/
+├── run_sweep.py              # OAT param sweep CLI (hard recommendations)
+├── tests/                    # cross-package + integration/
 └── docs/
 ```
 
