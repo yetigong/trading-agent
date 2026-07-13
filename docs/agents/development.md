@@ -30,7 +30,7 @@ Runtime configuration lives in `data/` (gitignored). Templates are committed und
 | `signal_config.json` | Sector ETFs to track, enabled signal sources |
 | `watchlist.json` | Symbols of interest (wired into signal universe / backtest `--symbols` fallback) |
 | `brokerage_config.json` | Broker provider default (`alpaca`, `robinhood`, `mock`) |
-| `knowledge_base.json` | Learning KB (today under trading_agent agents; **moves to `strategy_learning` in 4.5.3**) |
+| `knowledge_base.json` | Learning KB (**owned by `strategy_learning`**; file still under `data/`) |
 
 On first load each store seeds from `data.example/` if the file is missing. Override the directory with `DATA_DIR` (useful in tests).
 
@@ -45,7 +45,7 @@ Do not commit `data/` — only edit locally. API keys and LLM provider settings 
 | Package | When to touch |
 |---------|----------------|
 | `trading_agent/` | Live cycle, brokers, signals, backtest engine, config stores |
-| `strategy_learning/` | Offline learning (scaffold in 4.5.1; KB/sweep/retrospection in later 4.5.x) |
+| `strategy_learning/` | Offline learning (KB/feedback in 4.5.3; sweep/retrospection in later 4.5.x) |
 
 Keep package diagrams in `docs/PROJECT_PLAN.md` and [codebase.md](codebase.md) in sync when changing boundaries.
 

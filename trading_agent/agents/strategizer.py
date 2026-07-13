@@ -3,7 +3,7 @@
 from typing import Any, Dict, Optional
 
 from trading_agent.agents.base import ConfigurableAgent
-from trading_agent.agents.knowledge import KnowledgeBase
+from strategy_learning.knowledge import KnowledgeBase
 from trading_agent.agents.messages import StrategyOption, StrategyPlan
 from trading_agent.domain.cycle import StrategyContext
 from trading_agent.domain.user.user_preferences import UserPreferences

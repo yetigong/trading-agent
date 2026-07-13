@@ -14,12 +14,12 @@ This repository includes documentation for AI coding agents working in the codeb
 | [Backtesting](docs/agents/backtesting.md) | Phase 3 historical replay, benchmarks, CLI |
 | [Multi-agent](docs/agents/multi-agent.md) | Phase 4 agents, coordinator, knowledge base |
 | [Learning loop](docs/agents/learning-loop.md) | Phase 4.5 learning loop + `strategy_learning` boundary |
-| [strategy_learning README](strategy_learning/README.md) | Offline learning package scaffold |
+| [strategy_learning README](strategy_learning/README.md) | Offline learning package (KB ownership in 4.5.3) |
 | [Multi-broker](docs/agents/multi-broker.md) | Phase 5 broker abstraction, Robinhood optional adapter |
 | [PR descriptions](docs/agents/pr-description.md) | How to write pull request summaries |
 | [Project plan](docs/PROJECT_PLAN.md) | Roadmap, package diagrams, data boundary (`trading_agent` vs `strategy_learning`) |
 
-**Package boundary:** `trading_agent` owns live trading, configs, and backtest; `strategy_learning` owns KB/recommendations/sweep (scaffold in 4.5.1). Learning must not write `data/*.json` params — see [learning-loop.md](docs/agents/learning-loop.md).
+**Package boundary:** `trading_agent` owns live trading, configs, and backtest; `strategy_learning` owns KB/recommendations/sweep. Learning must not write `data/*.json` params — see [learning-loop.md](docs/agents/learning-loop.md).
 
 When making changes, prefer minimal diffs, match existing patterns, and run tests before opening a PR:
 

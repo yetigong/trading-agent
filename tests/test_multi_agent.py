@@ -2,9 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from strategy_learning.knowledge import KnowledgeBase
 from trading_agent.agents.coordinator import CycleCoordinator
-from trading_agent.agents.knowledge import KnowledgeBase
-from trading_agent.agents.learner import LearnerAgent
+from trading_agent.agents.live_lesson import LiveLessonAgent
 from trading_agent.agents.messages import (
     ExecutionReport,
     MarketSummary,
@@ -44,7 +44,7 @@ class TestKnowledgeBase(unittest.TestCase):
             self.assertEqual(kb.strategy_preferences()["recent_trade_bias"], 0.1)
 
 
-class TestLearnerAgent(unittest.TestCase):
+class TestLiveLessonAgent(unittest.TestCase):
     def test_appends_lesson_for_hold(self):
         with tempfile.TemporaryDirectory() as tmp:
             data_dir = Path(tmp)
@@ -54,8 +54,8 @@ class TestLearnerAgent(unittest.TestCase):
                 '{"lessons": [], "signal_weights": {}, "strategy_preferences": {}}\n'
             )
             kb = KnowledgeBase(data_dir=data_dir, example_dir=example)
-            learner = LearnerAgent(knowledge_base=kb)
-            result = learner.run(
+            agent = LiveLessonAgent(knowledge_base=kb)
+            result = agent.run(
                 {
                     "cycle_id": "abcdef12-3456",
                     "status": "success",
@@ -154,7 +154,7 @@ class TestCoordinatorWithMocks(unittest.TestCase):
                         decisions=[],
                         executed_trades=[],
                     ).to_dict()
-                elif self.name == "learner":
+                elif self.name == "live_lesson":
                     ctx["lessons_update"] = {"lessons_added": ["ok"]}
 
         registry = AgentRegistry(
@@ -163,7 +163,7 @@ class TestCoordinatorWithMocks(unittest.TestCase):
                 "trading_strategizer": FakeAgent("trading_strategizer"),
                 "trade_executor": FakeAgent("trade_executor"),
                 "decision_logger": FakeAgent("decision_logger"),
-                "learner": FakeAgent("learner"),
+                "live_lesson": FakeAgent("live_lesson"),
             }
         )
         result = CycleCoordinator(registry).run()
@@ -174,7 +174,7 @@ class TestCoordinatorWithMocks(unittest.TestCase):
                 "trading_strategizer",
                 "trade_executor",
                 "decision_logger",
-                "learner",
+                "live_lesson",
             ],
         )
         self.assertEqual(result["status"], "success")
@@ -200,10 +200,10 @@ class TestCoordinatorWithMocks(unittest.TestCase):
                 signal_aggregator=aggregator,
                 user_preferences=prefs,
                 knowledge_base=kb,
-                disabled=["learner"],
+                disabled=["live_lesson"],
             )
             names = [a.name for a in registry.enabled_pipeline()]
-            self.assertNotIn("learner", names)
+            self.assertNotIn("live_lesson", names)
             self.assertIn("market_analyzer", names)
 
 

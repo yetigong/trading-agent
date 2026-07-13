@@ -4,12 +4,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from strategy_learning.knowledge import KnowledgeBase
 from trading_agent.broker.base import BrokerClient
 from trading_agent.agents.base import Agent
 from trading_agent.agents.decision_logger import DecisionLoggerAgent
 from trading_agent.agents.executor import TradeExecutorAgent
-from trading_agent.agents.knowledge import KnowledgeBase
-from trading_agent.agents.learner import LearnerAgent
+from trading_agent.agents.live_lesson import LiveLessonAgent
 from trading_agent.agents.market_analyzer import MarketAnalyzerAgent
 from trading_agent.agents.strategizer import TradingStrategizerAgent
 from trading_agent.analysis.runner import AnalysisRunner
@@ -36,7 +36,7 @@ class AgentRegistry:
             "trading_strategizer",
             "trade_executor",
             "decision_logger",
-            "learner",
+            "live_lesson",
         ]
         return [
             self.agents[name]
@@ -106,9 +106,9 @@ def build_default_registry(
             write_artifact=write_artifact,
             enabled="decision_logger" not in disabled_set,
         ),
-        "learner": LearnerAgent(
+        "live_lesson": LiveLessonAgent(
             knowledge_base=kb,
-            enabled="learner" not in disabled_set,
+            enabled="live_lesson" not in disabled_set,
         ),
     }
     return AgentRegistry(agents=agents, knowledge_base=kb)

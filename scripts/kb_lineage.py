@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from trading_agent.agents.knowledge import KnowledgeBase
+from strategy_learning.knowledge import KnowledgeBase
 
 
 def _load_artifact_stats(path: Optional[str]) -> str:

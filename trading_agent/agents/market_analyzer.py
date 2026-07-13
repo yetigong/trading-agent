@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from trading_agent.broker.base import BrokerClient
 from trading_agent.agents.base import ConfigurableAgent
-from trading_agent.agents.knowledge import KnowledgeBase
+from strategy_learning.knowledge import KnowledgeBase
 from trading_agent.agents.messages import MarketSummary
 from trading_agent.analysis.runner import AnalysisRunner
 from trading_agent.domain.user.user_preferences import UserPreferences

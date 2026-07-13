@@ -8,8 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from trading_agent.agents.kb_records import config_hash, make_event_ref
-from trading_agent.agents.knowledge import KnowledgeBase
+from strategy_learning.knowledge import KnowledgeBase, config_hash, make_event_ref
 from trading_agent.storage import (
     PreferencesStore,
     RebalanceConfigStore,

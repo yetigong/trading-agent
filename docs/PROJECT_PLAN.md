@@ -11,11 +11,11 @@ Two top-level packages share the repo:
 | Package | Role |
 |---------|------|
 | **`trading_agent`** | Live trading, brokers, market data, cycle/decision logs, **config ownership** (`data/*.json` params), and backtest engine (bundled through Phase 4.5) |
-| **`strategy_learning`** | Offline tuning: knowledge base, recommendations, param sweep, live retrospection (scaffold in 4.5.1; logic in 4.5.3–4.5.5) |
+| **`strategy_learning`** | Offline tuning: knowledge base, recommendations, param sweep, live retrospection (KB in 4.5.3; sweep/retro in 4.5.4–4.5.5) |
 
 Persistence, management UX, and multi-tenant support follow in later phases. Phase **11** decouples `strategy_learning` into its own deploy/schedule.
 
-### Current architecture (Phase 4.5.2 — live/backtest runs + learning scaffold)
+### Current architecture (Phase 4.5.3 — KB owned by strategy_learning)
 
 ```mermaid
 flowchart TB
@@ -36,21 +36,27 @@ flowchart TB
         BT[backtest engine]
         Cfg["owns configs data/*.json"]
         MD[market data + cycle logs]
+        Promo[promotion apply]
     end
 
-    subgraph sl [strategy_learning scaffold]
-        SLK[knowledge placeholder]
+    subgraph sl [strategy_learning]
+        SLK[KnowledgeBase]
         SLS[sweep placeholder]
         SLR[retrospection placeholder]
+        FB[BacktestFeedbackAgent]
     end
 
     RA --> TC --> Live --> TA --> AG
     TS --> TC
     RAH --> AHM
     RBT --> BT --> BTRun --> TA
+    RBT --> FB --> SLK
     Cfg -->|"runtime read"| TA
     MD --> TA
-    SLK -.->|"KB ownership 4.5.3+"| AG
+    AG -->|"soft context read"| SLK
+    AG -->|"LiveLessonAgent writes"| SLK
+    Promo -->|"status via KB"| SLK
+    Promo -->|"writes"| Cfg
     SLS -.->|"calls backtest 4.5.4+"| BT
     SLR -.->|"live signal only 4.5.5+"| Live
 ```
@@ -324,16 +330,17 @@ Phase 4 delivered the **structural** loop (logger → learner → file KB → an
 
 **Doc:** [`docs/agents/learning-loop.md`](agents/learning-loop.md) · Package scaffold: [`strategy_learning/`](../strategy_learning/)
 
-### Delivered (A + B + 4.5.1 + 4.5.2)
+### Delivered (A + B + 4.5.1 + 4.5.2 + 4.5.3)
 
-- Backtest disables `LearnerAgent` (no per-cycle KB pollution)
+- Backtest disables `LiveLessonAgent` (no per-cycle KB pollution)
 - Analysis/strategy prompts include lessons, signal weights, `recent_trade_bias`
 - KB schema v2 with `user_id`, typed records, EventRef provenance, v1 migration
 - `BacktestFeedbackAgent` + `run_backtest.py --feedback`
 - Review CLI (`scripts/review_config_recommendation.py`) and lineage (`scripts/kb_lineage.py`)
-- Learner patches `lessons_update` onto cycle artifacts; backtest summaries include `cycle_id`
-- `strategy_learning/` **scaffold** + architecture/docs aligned to package and data boundaries (no runtime move yet)
+- Live lesson agent patches `lessons_update` onto cycle artifacts; backtest summaries include `cycle_id`
+- `strategy_learning/` package with KB ownership (`knowledge/store`, `records`, `feedback`)
 - `LiveAgentRun` / `BacktestAgentRun` wrappers; circular-trigger guard; deploy = live only
+- Config apply remains in `trading_agent` promotion (learning never writes `data/*.json` params)
 
 
 
@@ -344,7 +351,7 @@ Phase 4 delivered the **structural** loop (logger → learner → file KB → an
 | --------------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
 | **4.5.1** — Structure + docs      | **Done** | `strategy_learning/` scaffold; diagrams and agent docs; no behavior change                          |
 | **4.5.2** — Live vs Backtest runs | **Done** | `LiveAgentRun` / `BacktestAgentRun`; retrospection only on live; deploy = live only                 |
-| **4.5.3** — Data boundary         | Planned  | KB + rec writes in `strategy_learning`; configs stay trading_agent-owned; apply not in learning pkg |
+| **4.5.3** — Data boundary         | **Done** | KB + rec writes in `strategy_learning`; configs stay trading_agent-owned; apply not in learning pkg |
 | **4.5.4** — Param sweep           | Planned  | Parallel N backtests → `SweepResult`; **sole** recommendation producer                              |
 | **4.5.5** — Live retrospection    | Planned  | Live underperf → out-of-band sweep; mark 4.5 complete                                               |
 
@@ -496,7 +503,7 @@ Depends on Phase 4.5.5. Out of scope until the learning loop is complete inside 
 3. ~~Phase 1 follow-ups~~ — pre-trade validation, dedupe ✓
 4. ~~Phase 3~~ — backtesting ✓
 5. ~~**Phase 4** — multi-agent architecture~~ ✓
-6. **Phase 4.5** — learning loop (~~4.5.1~~ ✓ → ~~4.5.2~~ ✓ → 4.5.3 data boundary → 4.5.4 sweep → 4.5.5 retrospection)
+6. **Phase 4.5** — learning loop (~~4.5.1~~ ✓ → ~~4.5.2~~ ✓ → ~~4.5.3~~ ✓ → 4.5.4 sweep → 4.5.5 retrospection)
 7. ~~**Phase 5** — multi-broker~~ ✓
 8. **Phase 6** — data persistence (before UX and multi-user)
 9. **Phase 7** — manageability UX
@@ -524,8 +531,8 @@ Depends on Phase 4.5.5. Out of scope until the learning loop is complete inside 
 | Account history fetcher      | `trading_agent/account/`                                                                    |
 | Core orchestrator            | `trading_agent/orchestrator/agent.py` (`TradingAgent` facade)                               |
 | Multi-agent package          | `trading_agent/agents/`                                                                     |
-| Strategy learning (scaffold) | `strategy_learning/`                                                                        |
-| Learning loop (current impl) | `trading_agent/agents/backtest_feedback.py`, `promotion.py`; `docs/agents/learning-loop.md` |
+| Strategy learning (KB)        | `strategy_learning/knowledge/`                                                              |
+| Learning loop (apply path)   | `trading_agent/agents/promotion.py`; `docs/agents/learning-loop.md`                         |
 | Backtest engine              | `trading_agent/backtest/`                                                                   |
 | Historical market data       | `trading_agent/market_data/alpaca_historical.py`, `finnhub_historical.py`                   |
 | Config                       | `trading_agent/config.py`                                                                   |

@@ -244,7 +244,7 @@ def main() -> None:
 
     # Feedback-only mode against an existing artifact
     if args.feedback and args.feedback != "__latest__" and not (args.start and args.end):
-        from trading_agent.agents.backtest_feedback import (
+        from strategy_learning.knowledge import (
             BacktestFeedbackAgent,
             format_feedback_banner,
         )
@@ -288,7 +288,7 @@ def main() -> None:
     print(f"Artifact: {artifact}")
 
     if args.feedback is not None:
-        from trading_agent.agents.backtest_feedback import (
+        from strategy_learning.knowledge import (
             BacktestFeedbackAgent,
             format_feedback_banner,
         )

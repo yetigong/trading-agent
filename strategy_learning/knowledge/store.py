@@ -1,16 +1,15 @@
-"""File-backed knowledge base for Learner / BacktestFeedback (Phase 6 → DB)."""
+"""File-backed knowledge base (Phase 6 → DB). Owned by strategy_learning."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from trading_agent.agents.kb_records import (
+from strategy_learning.knowledge.records import (
     KnowledgeBaseError,
     RECOMMENDATION_STATUSES,
     clamp_signal_weight,
     config_hash,
-    empty_v2_document,
     ensure_v2,
     lesson_summaries,
     make_event_ref,

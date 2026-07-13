@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from trading_agent.agents.kb_records import (
+from strategy_learning.knowledge.records import (
     SIGNAL_WEIGHT_DELTA,
     TUNABLE_ENUMS,
     clamp_signal_weight,
@@ -17,9 +17,7 @@ from trading_agent.agents.kb_records import (
     MAX_POSITION_SIZE_STEPS,
     REBALANCE_THRESHOLD_STEPS,
 )
-from trading_agent.agents.knowledge import KnowledgeBase
-from trading_agent.backtest.comparison import load_run
-from trading_agent.backtest.models import BacktestRun
+from strategy_learning.knowledge.store import KnowledgeBase
 
 DEFAULT_MAX_DRAWDOWN = -0.25
 DEFAULT_MIN_TRADES = 1
@@ -47,6 +45,10 @@ class BacktestFeedbackAgent:
         *,
         is_validated_baseline: bool = True,
     ) -> Dict[str, Any]:
+        # Lazy import: trading_agent.backtest.__init__ pulls BacktestEngine → agents.
+        from trading_agent.backtest.comparison import load_run
+        from trading_agent.backtest.models import BacktestRun
+
         path = Path(artifact_path)
         data = load_run(path)
         run = BacktestRun.from_dict(data)
@@ -58,7 +60,7 @@ class BacktestFeedbackAgent:
 
     def reflect_on_backtest(
         self,
-        run: BacktestRun,
+        run: Any,
         *,
         artifact_path: Optional[str] = None,
         is_validated_baseline: bool = True,
@@ -234,7 +236,7 @@ class BacktestFeedbackAgent:
         self,
         metrics: Dict[str, Any],
         spy: Optional[Dict[str, Any]],
-        run: BacktestRun,
+        run: Any,
     ) -> Tuple[bool, List[str]]:
         reasons: List[str] = []
         if run.status != "success":

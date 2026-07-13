@@ -21,7 +21,7 @@ Also see [`strategy_learning/README.md`](../../strategy_learning/README.md) for 
 
 - **Minimize scope** — one concern per change; avoid drive-by refactors
 - **Match conventions** — read surrounding code before adding abstractions
-- **Package boundary** — `trading_agent` owns live trading + configs + backtest; `strategy_learning` owns KB/recommendations/sweep (scaffold now). Learning must not write `data/*.json` params — see [learning-loop.md](learning-loop.md)
+- **Package boundary** — `trading_agent` owns live trading + configs + backtest; `strategy_learning` owns KB/recommendations/sweep. Learning must not write `data/*.json` params — see [learning-loop.md](learning-loop.md)
 - **Paper trading default** — `ALPACA_PAPER=true`; never commit `.env` or secrets
 - **Test with mocks** — use `LLM_PROVIDER=mock` and `MockBrokerClient` in tests; CI has no API keys
 - **No root-level test files** — put unit/mock tests in `tests/` and live API checks in `tests/integration/`

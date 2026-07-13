@@ -7,7 +7,7 @@ LLM-driven **paper trading** (and optional live brokers) plus **offline strategy
 | Package | Responsibility |
 |---------|----------------|
 | [`trading_agent/`](../../trading_agent/) | Live cycles, brokers, market data, decision logs, **config files**, backtest engine |
-| [`strategy_learning/`](../../strategy_learning/) | Knowledge base, recommendations, sweep, retrospection (scaffold now; see [learning-loop.md](learning-loop.md)) |
+| [`strategy_learning/`](../../strategy_learning/) | Knowledge base, recommendations, sweep, retrospection (KB Done in 4.5.3; see [learning-loop.md](learning-loop.md)) |
 
 `strategy_learning` **proposes** config changes; it does **not** write `data/*.json` params. Humans / future management UX apply approvals into trading_agent-owned configs.
 
@@ -98,8 +98,8 @@ trading-agent/
 │   ├── formatters/           # Domain → LLM prompt text
 │   ├── models.py             # JSON parsing helpers
 │   └── llm/
-├── strategy_learning/        # Offline tuning scaffold (Phase 4.5.1+)
-│   ├── knowledge/            # KB ownership — Phase 4.5.3
+├── strategy_learning/        # Offline tuning (KB ownership in 4.5.3+)
+│   ├── knowledge/            # KnowledgeBase, records, BacktestFeedbackAgent
 │   ├── sweep/                # Param sweep — Phase 4.5.4
 │   └── retrospection/        # Live underperf trigger — Phase 4.5.5
 ├── run_backtest.py           # manual historical backtest CLI
@@ -157,7 +157,7 @@ trading-agent/
 | Cycle orchestration | `trading_agent/orchestrator/agent.py`, `agent_run.py` |
 | Account history mode | `trading_agent/orchestrator/account_history.py`, `run_account_history.py` |
 | Backtesting | `trading_agent/backtest/`, `run_backtest.py`; see [backtesting.md](backtesting.md) |
-| Strategy learning | `strategy_learning/` scaffold; see [learning-loop.md](learning-loop.md) |
+| Strategy learning | `strategy_learning/knowledge/`; see [learning-loop.md](learning-loop.md) |
 | Prompt formatting | `trading_agent/formatters/` |
 | Decision JSON schema | `trading_agent/models.py`, `GeneralTradingStrategy` |
 | New broker | `trading_agent/broker/` + `build_broker_client()`; see [multi-broker.md](multi-broker.md) |

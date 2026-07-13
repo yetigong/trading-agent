@@ -1,20 +1,24 @@
-"""Learner & Summarizer — reflect on cycle outcomes into the knowledge base."""
+"""Live lesson agent — reflect on cycle outcomes into the knowledge base.
+
+This is the live trading-cycle agent (not the offline strategy_learning package).
+It appends lessons and soft bias prefs via strategy_learning.KnowledgeBase.
+"""
 
 import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from strategy_learning.knowledge import KnowledgeBase
 from trading_agent.agents.base import ConfigurableAgent
-from trading_agent.agents.knowledge import KnowledgeBase
 from trading_agent.agents.messages import LessonsUpdate
 from trading_agent.models import serialize_for_json
 
 logger = logging.getLogger(__name__)
 
 
-class LearnerAgent(ConfigurableAgent):
-    name = "learner"
+class LiveLessonAgent(ConfigurableAgent):
+    name = "live_lesson"
 
     def __init__(
         self,

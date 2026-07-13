@@ -41,7 +41,7 @@ class CycleCoordinator:
                     if market_analysis is not None and market_analysis.has_failure():
                         ctx["status"] = "failed"
                         ctx["error"] = "All market analysis strategies failed"
-                        for name in ("decision_logger", "learner"):
+                        for name in ("decision_logger", "live_lesson"):
                             follow = self.registry.get(name)
                             if follow and follow.is_enabled():
                                 follow.run(ctx)
@@ -73,12 +73,12 @@ class CycleCoordinator:
                         return ctx["cycle_result"]
                 except Exception:
                     logger.exception("Decision logger failed during error handling")
-            learner = self.registry.get("learner")
-            if learner and learner.is_enabled():
+            live_lesson = self.registry.get("live_lesson")
+            if live_lesson and live_lesson.is_enabled():
                 try:
-                    learner.run(ctx)
+                    live_lesson.run(ctx)
                 except Exception:
-                    logger.exception("Learner failed during error handling")
+                    logger.exception("LiveLessonAgent failed during error handling")
             return CycleResult(
                 status="failed",
                 cycle_id=cycle_id,
